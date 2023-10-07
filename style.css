@@ -1,0 +1,90 @@
+body {
+    width: 700px;
+    height: 500px;
+    overflow-y: auto;
+    font-family: 'Roboto', sans-serif; /* Use a modern font */
+    background-color: #111; /* Dark background color */
+    color: #fff; /* Text color */
+    padding: 20px;
+  }
+  
+  button {
+    background-color: #ff6f61; /* Neon red button background color */
+    color: #fff; /* White text color */
+    border: 2px solid #ff4e44; /* Neon red border */
+    border-radius: 4px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+  }
+  
+  /* Style for links */
+  a {
+    color: #ff6f61; /* Neon red link text color */
+    text-decoration: none; /* Remove underlines from links */
+    transition: color 0.3s; /* Smooth color transition on hover */
+    display: block;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 5px 0;
+    transition: background-color 0.3s;
+  }
+  
+  a:hover {
+    background-color: #ff4e44; /* Darker neon red on hover */
+  }
+  
+  /* Style for disabled links */
+  a.disabled {
+    color: #999; /* Disabled link text color */
+    pointer-events: none; /* Disable pointer events for disabled links */
+  }
+  
+  /* Style for copied notification */
+  #copied {
+    background-color: #ff6f61; /* Neon red background color */
+    color: #fff; /* White text color */
+    padding: 10px 20px;
+    border-radius: 4px;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    opacity: 0;
+    transition: opacity 0.3s; /* Smooth fade-in/fade-out transition */
+    z-index: 9999; /* Ensure it's on top of other content */
+  }
+  
+  #copied.show-copied {
+    opacity: 1; /* Show the notification */
+  }
+  
+  /* Style for the list of keys */
+  ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  li {
+    margin-bottom: 10px;
+  }
+  
+  a.disabled {
+    color: #999; /* Disabled link text color */
+    pointer-events: none; /* Disable pointer events for disabled links */
+  }
+  
+  button:hover {
+    opacity: 0.9;
+  }
+
+  /* Style for the trash bin symbol */
+.trash-icon {
+    margin-left: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    color: #ff6f61; /* Neon red color */
+  }
+  
+  .trash-icon:hover {
+    color: #ff4e44; /* Darker neon red on hover */
+  }
