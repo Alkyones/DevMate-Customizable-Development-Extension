@@ -1,0 +1,38 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #333;
+    color: #fff;
+    margin: 0;
+    padding: 0;
+    width: 500px; /* Adjust the width as needed */
+    height: 600px; /* Adjust the height as needed */
+    border-radius: 5%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  
+  button {
+    background-color: #9d212b;
+    border: none;
+    color: #fff;
+    padding: 8px 16px; /* Adjust the padding as needed */
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px; /* Adjust the font size as needed */
+    transition: background-color 0.3s ease;
+    margin-top: 20px; /* Adjust the margin as needed */
+  }
+  
+  button:hover {
+    background-color: #ba1016;
+  }
+  
+  button:active {
+    background-color: #2c66ba;
+  }
+  
+  /* You can add more styles for other elements as needed */
+  
