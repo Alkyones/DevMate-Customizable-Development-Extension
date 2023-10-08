@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- Include the CSS stylesheet -->
-  <link rel="stylesheet" type="text/css" href="style.css">
+  <link rel="stylesheet" type="text/css" href="css/link.css">
 </head>
 <body>
-  <!-- Your extension content -->
-  <button id="checkButton">Check Local Storage</button>
+  <h2 class="devmate-title">DevMate</h2>
+  <div class="button-container">
+    <button id="checkButton">Check Local Storage</button>
+    <button id="showLinksButton">Show Useful Links</button>
+    <button class="comingSoon" disabled>Fetch/XHR Modify</button>
+    <button class="comingSoon" id="" disabled>Add Credentials</button>
+
+
+  </div>
   <div id="result"></div>
   <div id="copied"></div>
-  <!-- ... -->
-  <script src="popup.js"></script>
-
+  <script src="scripts/popup.js"></script>
 </body>
 </html>
