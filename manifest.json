@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LocalStorage Viewer",
   "version": "1.0",
-  "description": "View and copy local storage keys",
+  "description": "View and copy local storage keys with additional features for development purposes.",
   "permissions": ["activeTab", "storage", "scripting"],
   "action": {
     "default_popup": "popup.html",
