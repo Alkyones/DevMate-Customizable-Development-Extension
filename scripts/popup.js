@@ -9,10 +9,22 @@ const usefulLinks = [
 
 let localStorageVisible = false; // Track whether the Local Storage list is visible
 let linksListVisible = false; // Track whether the Useful Links list is visible
+let credentialsVisible = false
 
 const checkButton = document.getElementById("checkButton");
 const showLinksButton = document.getElementById("showLinksButton");
+const addCredentialsButton = document.getElementById("credentialsButton");
+
+
 const resultDiv = document.getElementById("result");
+const credentialsDiv = document.getElementById("credentials");
+
+const keyInput = document.getElementById("keyInput");
+const valueInput = document.getElementById("valueInput");
+const saveCookieButton = document.getElementById("saveCookieButton");
+const savedCookiesList = document.getElementById("savedCookies");
+
+
 
 function checkLocalStorage() {
   const isEmpty = Object.keys(localStorage).length === 0;
@@ -87,6 +99,43 @@ checkButton.addEventListener("click", function () {
     });
     localStorageVisible = true;
   }
+});
+
+addCredentialsButton.addEventListener("click", function () {
+  if(credentialsVisible){
+    credentialsDiv.style.display = "none";
+    addCredentialsButton.textContent = "Show credentials";
+    credentialsVisible = !credentialsVisible
+  } else {
+    credentialsVisible = !credentialsVisible
+    addCredentialsButton.textContent = "Hide Credentials";
+    credentialsDiv.style.display = "block"
+  }
+})
+
+saveCookieButton.addEventListener("click", function () {
+  const key = keyInput.value.trim();
+  const value = valueInput.value;
+
+  if (!key || !value) {
+    alert("Please enter both a key and a value.");
+    return;
+  }
+
+  // Set the cookie with an expiration date 365 days in the future (adjust as needed)
+  const expirationDate = new Date();
+  expirationDate.setDate(expirationDate.getDate() + 365); // 365 days from now
+  const expires = `expires=${expirationDate.toUTCString()}`;
+  document.cookie = `${key}=${value}; ${expires}; path=/`;
+
+  // Display the saved cookie in the list
+  const listItem = document.createElement("li");
+  listItem.textContent = `${key}: ${value}`;
+  savedCookiesList.appendChild(listItem);
+
+  // Clear the input fields
+  keyInput.value = "";
+  valueInput.value = "";
 });
 
 chrome.runtime.onMessage.addListener(function (message) {

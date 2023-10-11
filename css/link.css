@@ -126,3 +126,7 @@ li {
 .comingSoon:hover::before {
   background-color: rgba(255, 255, 255, 0.2);
 }
+
+#credentials {
+  display: none;
+}
