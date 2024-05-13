@@ -7,8 +7,8 @@ const usefulLinks = [
   { text: "Finmid", url: "https://platform.finmid.com/" },
 ];
 
-let localStorageVisible = false; // Track whether the Local Storage list is visible
-let linksListVisible = false; // Track whether the Useful Links list is visible
+let localStorageVisible = false; 
+let linksListVisible = false; 
 let credentialsVisible = false
 
 const checkButton = document.getElementById("checkButton");
@@ -24,7 +24,7 @@ const valueInput = document.getElementById("valueInput");
 const saveCookieButton = document.getElementById("saveCookieButton");
 const savedCookiesList = document.getElementById("savedCookies");
 
-
+const toggleDisplay = (localVisible, ) => {};
 
 function checkLocalStorage() {
   const isEmpty = Object.keys(localStorage).length === 0;
@@ -47,6 +47,12 @@ showLinksButton.addEventListener("click", function () {
     checkButton.textContent = "Show Local Storage";
     resultDiv.innerHTML = "";
     localStorageVisible = false;
+  }
+
+  if (credentialsVisible){
+    addCredentialsButton.textContent = "Show Credentials"
+    credentialsDiv.style.display = "none"
+    credentialsVisible = !credentialsVisible
   }
 
   // Toggle the Useful Links list
@@ -102,6 +108,18 @@ checkButton.addEventListener("click", function () {
 });
 
 addCredentialsButton.addEventListener("click", function () {
+  if (localStorageVisible) {
+    checkButton.textContent = "Show Local Storage";
+    resultDiv.innerHTML = "";
+    localStorageVisible = false;
+  }
+
+  // Toggle the Useful Links list
+  if (linksListVisible) {
+    showLinksButton.textContent = "Show Useful Links";
+    resultDiv.innerHTML = "";
+    linksListVisible = false;
+  }
   if(credentialsVisible){
     credentialsDiv.style.display = "none";
     addCredentialsButton.textContent = "Show credentials";
