@@ -1,135 +1,119 @@
-const usefulLinks = [
-  { text: "Google Console", url: "https://console.cloud.google.com/" },
-  { text: "Click Up", url: "https://app.clickup.com/" },
-  { text: "BitBucket", url: "https://bitbucket.org/frupro/workspace/projects/" },
-  { text: "MongoDB", url: "https://www.mongodb.com" },
-  { text: "Xero", url: "https://go.xero.com/" },
-  { text: "Finmid", url: "https://platform.finmid.com/" },
-];
-
-let localStorageVisible = false; 
-let linksListVisible = false; 
-let credentialsVisible = false
-
-const checkButton = document.getElementById("checkButton");
-const showLinksButton = document.getElementById("showLinksButton");
-const addCredentialsButton = document.getElementById("credentialsButton");
-
-
+//VARIABLES
 const resultDiv = document.getElementById("result");
 const credentialsDiv = document.getElementById("credentials");
+
+const visibleState = {
+  localStorageVisible: false,
+  linksListVisible: false,
+  credentialsVisible: false
+}
+
+const checkButton = document.getElementById("checkButton");
+const addCredentialsButton = document.getElementById("credentialsButton");
+
+const showLinksButton = document.getElementById("showLinksButton");
+const addLinksDiv = document.getElementById("links");
+
+const linkKeyInput = document.getElementById("linkKeyInput");
+const linkValueInput = document.getElementById("linkValueInput");
+const saveLinkButton = document.getElementById("saveLinkButton");
+const usefulLinks = [
+];
+
 
 const keyInput = document.getElementById("keyInput");
 const valueInput = document.getElementById("valueInput");
 const saveCookieButton = document.getElementById("saveCookieButton");
 const savedCookiesList = document.getElementById("savedCookies");
 
-const toggleDisplay = (localVisible, ) => {};
 
-function checkLocalStorage() {
-  const isEmpty = Object.keys(localStorage).length === 0;
-  const localStorageData = isEmpty ? null : localStorage;
-  chrome.runtime.sendMessage({ isEmpty, localStorageData });
+//Toggle functions
+
+const emptyResultDiv = (div) => {
+  div.innerHTML = "";
+  return div
 }
 
-function copyValueToClipboard(value) {
-  const tempInput = document.createElement("input");
-  document.body.appendChild(tempInput);
-  tempInput.value = value;
-  tempInput.select();
-  document.execCommand("copy");
-  document.body.removeChild(tempInput);
-}
+const toggleDisplay = async (changeStateButton, visibleState) => {
+  let { localStorageVisible, linksListVisible, credentialsVisible } = visibleState;
+  
+  emptyResultDiv(resultDiv);
+  emptyResultDiv(credentialsDiv);
 
-showLinksButton.addEventListener("click", function () {
-  // Close the Local Storage list if it's open
-  if (localStorageVisible) {
-    checkButton.textContent = "Show Local Storage";
-    resultDiv.innerHTML = "";
-    localStorageVisible = false;
+  switch (changeStateButton) {
+      case checkButton: {
+          localStorageVisible = !localStorageVisible;
+
+          visibleState.localStorageVisible = localStorageVisible;
+          visibleState.linksListVisible = false;
+          visibleState.credentialsVisible = false;
+          break;
+      }
+      case showLinksButton: {
+          linksListVisible = !linksListVisible;
+
+          visibleState.linksListVisible = linksListVisible;
+          visibleState.credentialsVisible = false;
+          visibleState.localStorageVisible = false;
+          break;
+      }
+      case addCredentialsButton: {
+          credentialsVisible = !credentialsVisible;
+
+          visibleState.credentialsVisible = credentialsVisible;
+          visibleState.linksListVisible = false;
+          visibleState.localStorageVisible = false;
+          break;
+      }
   }
+  checkButton.textContent = visibleState.localStorageVisible == true ? "Hide Local Storage" : "Show Local Storage";
+  showLinksButton.textContent = visibleState.linksListVisible == true ? "Hide Useful Links" : "Show Useful Links";
+  addLinksDiv.hidden = visibleState.linksListVisible == false ? true : false;
+  addCredentialsButton.textContent = visibleState.credentialsVisible == true ? "Hide Credentials" : "Show Credentials"
 
-  if (credentialsVisible){
-    addCredentialsButton.textContent = "Show Credentials"
-    credentialsDiv.style.display = "none"
-    credentialsVisible = !credentialsVisible
-  }
 
-  // Toggle the Useful Links list
-  if (linksListVisible) {
-    showLinksButton.textContent = "Show Useful Links";
-    resultDiv.innerHTML = "";
-    linksListVisible = false;
-  } else {
-    showLinksButton.textContent = "Hide Useful Links";
-    resultDiv.innerHTML = "";
+  return visibleState;
+};
 
-    const linksList = document.createElement("ul");
+//
 
-    usefulLinks.forEach((link) => {
-      const listItem = document.createElement("li");
-      const linkElement = document.createElement("a");
-      linkElement.textContent = link.text;
-      linkElement.href = link.url;
-      linkElement.target = "_blank";
-      listItem.appendChild(linkElement);
-      linksList.appendChild(listItem);
+//DB functions
+let db;
+const request = window.indexedDB.open("DevToolsDB", 3);
+request.onerror = (event) => {
+  console.error("Why didn't you allow my web app to use IndexedDB?!");
+};
+request.onsuccess = (event) => {
+  db = event.target.result;
+  console.log("Database opened successfully");
+
+};
+
+request.onupgradeneeded = (event) => {
+  db = event.target.result;
+  console.log("Object Store creation");
+  // Create an objectStore for this database
+  const usefulLinksObject = db.createObjectStore("usefulLinks", { keyPath: "key" });
+  const credentialsObject = db.createObjectStore("credentials", { keyPath: "key" });
+
+  // Create indexes
+  usefulLinksObject.createIndex("value", "value", { unique: false });
+  credentialsObject.createIndex("key", "key", { unique: false });
+
+
+
+  usefulLinksObject.transaction.oncomplete = (event) => {
+    const usefulLinksObjectStore = db
+    .transaction("usefulLinks", "readwrite")
+    .objectStore("usefulLinks");
+
+    usefulLinks.forEach((usefulLink) => {
+      console.log(usefulLink);
+      usefulLinksObjectStore.add({ key: usefulLink.key, value: usefulLink.value});
     });
+  };
+};
 
-    resultDiv.appendChild(linksList);
-    linksListVisible = true;
-  }
-});
-
-checkButton.addEventListener("click", function () {
-  // Close the Useful Links list if it's open
-  if (linksListVisible) {
-    showLinksButton.textContent = "Show Useful Links";
-    resultDiv.innerHTML = "";
-    linksListVisible = false;
-  }
-
-  // Toggle the Local Storage list
-  if (localStorageVisible) {
-    checkButton.textContent = "Show Local Storage";
-    resultDiv.innerHTML = "";
-    localStorageVisible = false;
-  } else {
-    checkButton.textContent = "Hide Local Storage";
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      const activeTab = tabs[0];
-      chrome.scripting.executeScript({
-        target: { tabId: activeTab.id },
-        function: checkLocalStorage,
-      });
-    });
-    localStorageVisible = true;
-  }
-});
-
-addCredentialsButton.addEventListener("click", function () {
-  if (localStorageVisible) {
-    checkButton.textContent = "Show Local Storage";
-    resultDiv.innerHTML = "";
-    localStorageVisible = false;
-  }
-
-  // Toggle the Useful Links list
-  if (linksListVisible) {
-    showLinksButton.textContent = "Show Useful Links";
-    resultDiv.innerHTML = "";
-    linksListVisible = false;
-  }
-  if(credentialsVisible){
-    credentialsDiv.style.display = "none";
-    addCredentialsButton.textContent = "Show credentials";
-    credentialsVisible = !credentialsVisible
-  } else {
-    credentialsVisible = !credentialsVisible
-    addCredentialsButton.textContent = "Hide Credentials";
-    credentialsDiv.style.display = "block"
-  }
-})
 
 saveCookieButton.addEventListener("click", function () {
   const key = keyInput.value.trim();
@@ -156,6 +140,84 @@ saveCookieButton.addEventListener("click", function () {
   valueInput.value = "";
 });
 
+saveLinkButton.addEventListener("click", function () {
+  const key = linkKeyInput.value.trim();
+  const value = linkValueInput.value;
+  if(key.length > 2 && value.length > 2){
+    db.transaction("usefulLinks", "readwrite")
+      .objectStore("usefulLinks")
+      .add({ key, value } );
+
+  }
+});
+
+
+
+
+
+
+
+
+function checkLocalStorage() {
+  const isEmpty = Object.keys(localStorage).length === 0;
+  const localStorageData = isEmpty ? null : localStorage;
+  chrome.runtime.sendMessage({ isEmpty, localStorageData });
+}
+
+function copyValueToClipboard(value) {
+  const tempInput = document.createElement("input");
+  document.body.appendChild(tempInput);
+  tempInput.value = value;
+  tempInput.select();
+  document.execCommand("copy");
+  document.body.removeChild(tempInput);
+}
+
+//MAIN MENU
+showLinksButton.addEventListener("click", async function () {
+    await toggleDisplay(showLinksButton, visibleState);
+    if(visibleState.linksListVisible == true) {
+      const linksList = document.createElement("ul");
+      const linksInDB = await window.indexedDB.databases('DevToolsDB')
+    
+      console.log(linksInDB);
+      usefulLinks.forEach((link) => {
+        const listItem = document.createElement("li");
+        const linkElement = document.createElement("a");
+        linkElement.textContent = link.text;
+        linkElement.href = link.value;
+        linkElement.target = "_blank";
+        listItem.appendChild(linkElement);
+        linksList.appendChild(listItem);
+      });
+  
+      resultDiv.appendChild(linksList);
+      return true;
+    }
+});
+
+checkButton.addEventListener("click", async function () {
+  await toggleDisplay(checkButton, visibleState);
+ 
+  if (visibleState.localStorageVisible == true) {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      const activeTab = tabs[0];
+      chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        function: checkLocalStorage,
+      });
+    });
+  }
+});
+
+addCredentialsButton.addEventListener("click",async function () {
+  await toggleDisplay(addCredentialsButton, visibleState);  
+});
+//
+
+
+
+//EXECUTION
 chrome.runtime.onMessage.addListener(function (message) {
   if (message.isEmpty) {
     resultDiv.textContent = "Local Storage is empty.";
