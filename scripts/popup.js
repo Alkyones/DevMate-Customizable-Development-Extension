@@ -81,7 +81,7 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
 let db;
 const request = window.indexedDB.open("DevToolsDB", 3);
 request.onerror = (event) => {
-  console.error("Why didn't you allow my web app to use IndexedDB?!");
+  alert("Database open failed. Be aware most of the functions will not work.");
 };
 request.onsuccess = (event) => {
   db = event.target.result;
@@ -140,7 +140,7 @@ saveCookieButton.addEventListener("click", function () {
   valueInput.value = "";
 });
 
-saveLinkButton.addEventListener("click", function () {
+saveLinkButton.addEventListener("click", async function () {
   const key = linkKeyInput.value.trim();
   const value = linkValueInput.value;
   if(key.length > 2 && value.length > 2){
@@ -150,13 +150,14 @@ saveLinkButton.addEventListener("click", function () {
 
       linkKeyInput.value = "";
       linkValueInput.value = "";
+  } else {
+    alert("Please enter both a key and a value.");
   }
+
+  const data = await getSavedLinks();
+  updateSavedLinksTable(data);
+
 });
-
-
-
-
-
 
 
 
@@ -175,27 +176,53 @@ function copyValueToClipboard(value) {
   document.body.removeChild(tempInput);
 }
 
-//MAIN MENU
-showLinksButton.addEventListener("click", async function () {
-    await toggleDisplay(showLinksButton, visibleState);
-    if(visibleState.linksListVisible == true) {
-      const linksList = document.createElement("ul");
-      const linksInDB = await window.indexedDB.databases('DevToolsDB')
-    
-      console.log(linksInDB);
-      usefulLinks.forEach((link) => {
-        const listItem = document.createElement("li");
-        const linkElement = document.createElement("a");
-        linkElement.textContent = link.text;
-        linkElement.href = link.value;
-        linkElement.target = "_blank";
-        listItem.appendChild(linkElement);
-        linksList.appendChild(listItem);
-      });
-  
-      resultDiv.appendChild(linksList);
-      return true;
+
+function getSavedLinks(){
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('usefulLinks')
+                 .objectStore('usefulLinks')
+                 .getAll();
+
+    request.onsuccess = ()=> {
+        const data = request.result;
+        resolve(data);
     }
+
+    request.onerror = (err)=> {
+        console.error(`Error to get all data: ${err}`);
+        resolve(null);
+    }
+  });
+}
+
+function updateSavedLinksTable(linksInDB) {
+  emptyResultDiv(resultDiv);
+  const linksList = document.createElement("ul");
+  if (linksInDB) {
+    const listItems = linksInDB.map(
+      (link) => `<li><a href="${
+        link.value.startsWith("http") ? link.value : `https://${link.value}`
+      }" target="_blank">${link.key}</a></li>`
+    );
+    linksList.innerHTML = listItems.join("");
+  } else {
+    linksList.innerText = "No available data please try again later.";
+  }
+  resultDiv.appendChild(linksList);
+  return true;
+}
+
+
+
+//MAIN MENU
+showLinksButton.addEventListener("click", async function (event) {
+  event.preventDefault();
+  await toggleDisplay(showLinksButton, visibleState);
+  if (visibleState.linksListVisible) {
+    const linksInDB = await getSavedLinks();
+    updateSavedLinksTable(linksInDB)
+    return true;
+  }
 });
 
 checkButton.addEventListener("click", async function () {
