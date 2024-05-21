@@ -148,6 +148,8 @@ saveLinkButton.addEventListener("click", function () {
       .objectStore("usefulLinks")
       .add({ key, value } );
 
+      linkKeyInput.value = "";
+      linkValueInput.value = "";
   }
 });
 
