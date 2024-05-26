@@ -15,6 +15,16 @@ body {
   margin-bottom: 20px;
 }
 
+.input-container {
+  margin-bottom: 20px;
+  text-align: right
+}
+
+.input-container button {
+  padding: 3px 7px;
+}
+
+
 button {
   background-color: #ff6f61;
   color: #fff;
@@ -127,6 +137,3 @@ li {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-#credentials {
-  display: none;
-}

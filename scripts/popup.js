@@ -9,7 +9,7 @@ const visibleState = {
 }
 
 const checkButton = document.getElementById("checkButton");
-const addCredentialsButton = document.getElementById("credentialsButton");
+const credentialsButton = document.getElementById("credentialsButton");
 
 const showLinksButton = document.getElementById("showLinksButton");
 const addLinksDiv = document.getElementById("links");
@@ -20,11 +20,11 @@ const saveLinkButton = document.getElementById("saveLinkButton");
 const usefulLinks = [
 ];
 
-
-const keyInput = document.getElementById("keyInput");
-const valueInput = document.getElementById("valueInput");
-const saveCookieButton = document.getElementById("saveCookieButton");
-const savedCookiesList = document.getElementById("savedCookies");
+const credentialsWebsiteInput = document.getElementById("credentialsWebsiteInput");
+const credentialsKeyInput = document.getElementById("credentialsKeyInput");
+const credentialsValueInput = document.getElementById("credentialsValueInput");
+const saveCredentialButton = document.getElementById("saveCredentialButton");
+const credentialsList = document.getElementById("credentialsList");
 
 
 //Toggle functions
@@ -38,7 +38,7 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
   let { localStorageVisible, linksListVisible, credentialsVisible } = visibleState;
   
   emptyResultDiv(resultDiv);
-  emptyResultDiv(credentialsDiv);
+  // emptyResultDiv(credentialsDiv);
 
   switch (changeStateButton) {
       case checkButton: {
@@ -57,7 +57,7 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
           visibleState.localStorageVisible = false;
           break;
       }
-      case addCredentialsButton: {
+      case credentialsButton: {
           credentialsVisible = !credentialsVisible;
 
           visibleState.credentialsVisible = credentialsVisible;
@@ -69,7 +69,8 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
   checkButton.textContent = visibleState.localStorageVisible == true ? "Hide Local Storage" : "Show Local Storage";
   showLinksButton.textContent = visibleState.linksListVisible == true ? "Hide Useful Links" : "Show Useful Links";
   addLinksDiv.hidden = visibleState.linksListVisible == false ? true : false;
-  addCredentialsButton.textContent = visibleState.credentialsVisible == true ? "Hide Credentials" : "Show Credentials"
+  credentialsDiv.hidden = visibleState.credentialsVisible == false ? true : false;
+  credentialsButton.textContent = visibleState.credentialsVisible == true ? "Hide Credentials" : "Show Credentials"
 
 
   return visibleState;
@@ -79,6 +80,7 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
 
 //DB functions
 let db;
+
 const request = window.indexedDB.open("DevToolsDB", 3);
 request.onerror = (event) => {
   alert("Database open failed. Be aware most of the functions will not work.");
@@ -115,29 +117,24 @@ request.onupgradeneeded = (event) => {
 };
 
 
-saveCookieButton.addEventListener("click", function () {
-  const key = keyInput.value.trim();
-  const value = valueInput.value;
+saveCredentialButton.addEventListener("click", async function () {
+  const website = credentialsWebsiteInput.value.trim();
+  const key = credentialsKeyInput.value.trim();
+  const value = credentialsValueInput.value;
+  if(key.length > 2 && value.length > 2, website.length > 2){
+    db.transaction("credentials", "readwrite")
+      .objectStore("credentials")
+      .add({ website, key, value } );
 
-  if (!key || !value) {
+      credentialsWebsiteInput.value = "";
+      credentialsKeyInput.value = "";
+      credentialsValueInput.value = "";
+  } else {
     alert("Please enter both a key and a value.");
-    return;
   }
 
-  // Set the cookie with an expiration date 365 days in the future (adjust as needed)
-  const expirationDate = new Date();
-  expirationDate.setDate(expirationDate.getDate() + 365); // 365 days from now
-  const expires = `expires=${expirationDate.toUTCString()}`;
-  document.cookie = `${key}=${value}; ${expires}; path=/`;
-
-  // Display the saved cookie in the list
-  const listItem = document.createElement("li");
-  listItem.textContent = `${key}: ${value}`;
-  savedCookiesList.appendChild(listItem);
-
-  // Clear the input fields
-  keyInput.value = "";
-  valueInput.value = "";
+  const data = await getDataFromDB('credentials');
+  updateTable('credentials',data);
 });
 
 saveLinkButton.addEventListener("click", async function () {
@@ -154,8 +151,8 @@ saveLinkButton.addEventListener("click", async function () {
     alert("Please enter both a key and a value.");
   }
 
-  const data = await getSavedLinks();
-  updateSavedLinksTable(data);
+  const data = await getDataFromDB('usefulLinks');
+  updateTable('usefulLinks',data);
 
 });
 
@@ -177,10 +174,10 @@ function copyValueToClipboard(value) {
 }
 
 
-function getSavedLinks(){
+function getDataFromDB(collection){
   return new Promise((resolve, reject) => {
-    const request = db.transaction('usefulLinks')
-                 .objectStore('usefulLinks')
+    const request = db.transaction(collection)
+                 .objectStore(collection)
                  .getAll();
 
     request.onsuccess = ()=> {
@@ -193,6 +190,41 @@ function getSavedLinks(){
         resolve(null);
     }
   });
+}
+
+function updateTable(action, data) {
+  emptyResultDiv(resultDiv);
+  switch (action) {
+    case 'usefulLinks':
+      if (data) {
+        const listItems = data.map(
+          (link) => `<li><a href="${
+            link.value.startsWith("http") ? link.value : `https://${link.value}`
+          }" target="_blank">${link.key}</a></li>`
+        );
+        resultDiv.innerHTML = listItems.join("");
+      } else {
+        resultDiv.innerText = "No available data please try again later.";
+      }
+   
+
+      return true;
+    case 'credentials':
+      if (data) {
+        const listItems = data.map(
+          (credential) => `<li><a href="${
+            credential.website.startsWith("http") ? credential.website : `https://${credential.website}`
+          }" target="_blank">${credential.key} - ${credential.value}</a></li>`
+        );
+        resultDiv.innerHTML = listItems.join("");
+      } else {
+        resultDiv.innerText = "No available data please try again later.";
+      }
+      
+      return true;
+    default:
+      return false;
+  }
 }
 
 function updateSavedLinksTable(linksInDB) {
@@ -213,14 +245,12 @@ function updateSavedLinksTable(linksInDB) {
 }
 
 
-
 //MAIN MENU
 showLinksButton.addEventListener("click", async function (event) {
-  event.preventDefault();
   await toggleDisplay(showLinksButton, visibleState);
   if (visibleState.linksListVisible) {
-    const linksInDB = await getSavedLinks();
-    updateSavedLinksTable(linksInDB)
+    const linksInDB = await getDataFromDB('usefulLinks');
+    updateTable('usefulLinks',linksInDB)
     return true;
   }
 });
@@ -239,8 +269,14 @@ checkButton.addEventListener("click", async function () {
   }
 });
 
-addCredentialsButton.addEventListener("click",async function () {
-  await toggleDisplay(addCredentialsButton, visibleState);  
+credentialsButton.addEventListener("click",async function () {
+  await toggleDisplay(credentialsButton, visibleState); 
+  if (visibleState.credentialsVisible) {
+    const credentialsData = await getDataFromDB('credentials');
+    updateTable('credentials',credentialsData);
+    return true;
+
+  } 
 });
 //
 

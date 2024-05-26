@@ -13,18 +13,19 @@
 
 
   </div>
-  <div id="links" hidden>
-    <input type="text" id="linkKeyInput">
-    <input type="text" id="linkValueInput">
+  <div id="links" class= 'input-container' hidden>
+    <input type="text" placeholder="Enter link name" id="linkKeyInput">
+    <input type="text" placeholder="Enter link" id="linkValueInput">
     <button id="saveLinkButton">Add Link</button>
     <ul id="usefulLinks"></ul>
   </div>
   </div>
-  <div id="credentials">
-    <input type="text" id="keyInput">
-    <input type="text" id="valueInput">
-    <button id="saveCookieButton">Save Value</button>
-    <ul id="savedCookies"></ul>
+  <div id="credentials" class= 'input-container' hidden>
+    <input type="text" placeholder="Enter website" id="credentialsWebsiteInput">
+    <input type="text" placeholder="Enter username" id="credentialsKeyInput">
+    <input type="text" placeholder="Enter password" id="credentialsValueInput">
+    <button id="saveCredentialButton">Save Value</button>
+    <ul id="credentialsList"></ul>
   </div>
   <div id="result"></div>
   <div id="copied"></div>
