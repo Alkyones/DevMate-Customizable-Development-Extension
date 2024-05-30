@@ -95,16 +95,16 @@ request.onupgradeneeded = (event) => {
   db = event.target.result;
   console.log("Object Store creation");
   // Create an objectStore for this database
-  const usefulLinksObject = db.createObjectStore("usefulLinks", { keyPath: "key" });
-  const credentialsObject = db.createObjectStore("credentials", { keyPath: "key" });
+  const usefulLinksObject = db.createObjectStore("usefulLinks", { autoIncrement: true });
+  const credentialsObject = db.createObjectStore("credentials", { autoIncrement: true });
 
   // Create indexes
   usefulLinksObject.createIndex("value", "value", { unique: false });
-  credentialsObject.createIndex("key", "key", { unique: false });
+  credentialsObject.createIndex("value", "value", { unique: false });
 
 
 
-  usefulLinksObject.transaction.oncomplete = (event) => {
+  usefulLinksObject.transaction.oncomplete = () => {
     const usefulLinksObjectStore = db
     .transaction("usefulLinks", "readwrite")
     .objectStore("usefulLinks");
@@ -140,13 +140,13 @@ saveCredentialButton.addEventListener("click", async function () {
 saveLinkButton.addEventListener("click", async function () {
   const key = linkKeyInput.value.trim();
   const value = linkValueInput.value;
-  if(key.length > 2 && value.length > 2){
+  if(typeof key === 'string' && key.length > 2 && typeof value === 'string' && value.length > 2){
     db.transaction("usefulLinks", "readwrite")
-      .objectStore("usefulLinks")
-      .add({ key, value } );
+    .objectStore("usefulLinks")
+    .add({ key: key, value: value });
 
-      linkKeyInput.value = "";
-      linkValueInput.value = "";
+    linkKeyInput.value = "";
+    linkValueInput.value = "";
   } else {
     alert("Please enter both a key and a value.");
   }
@@ -173,8 +173,40 @@ function copyValueToClipboard(value) {
   document.body.removeChild(tempInput);
 }
 
+async function removeLink(action, key) {
+  switch (action) {
+    case 'usefulLinks':
+      db.transaction("usefulLinks", "readwrite")
+      .objectStore("usefulLinks")
+      .delete(key)
+      .onsuccess = async function(event) {
+         console.log(`Link with key ${key} removed successfully`);
+         // Update the display
+         const data = await getDataFromDB('usefulLinks');
+         updateTable('usefulLinks', data);
+       };
 
-function getDataFromDB(collection){
+       return true
+
+    case 'credentials':
+      db.transaction("credentials", "readwrite")
+      .objectStore("credentials")
+      .delete(key)
+      .onsuccess = async function(event) {
+         console.log(`credential with key ${key} removed successfully`);
+         // Update the display
+         const data = await getDataFromDB('credentials');
+         updateTable('credentials', data);
+       };
+
+       return true
+    default:
+       return true
+  }
+ 
+}
+
+async function getDataFromDB(collection){
   return new Promise((resolve, reject) => {
     const request = db.transaction(collection)
                  .objectStore(collection)
@@ -199,8 +231,8 @@ function updateTable(action, data) {
       if (data) {
         const listItems = data.map(
           (link) => `<li><a href="${
-            link.value.startsWith("http") ? link.value : `https://${link.value}`
-          }" target="_blank">${link.key}</a></li>`
+            link.value.startsWith("http")? link.value : `https://${link.value}`
+          }" target="_blank">${link.key}</a> <button class="remove-button" onclick="removeLink('${action}','${link.key}')"></button></li>`
         );
         resultDiv.innerHTML = listItems.join("");
       } else {
@@ -214,7 +246,7 @@ function updateTable(action, data) {
         const listItems = data.map(
           (credential) => `<li><a href="${
             credential.website.startsWith("http") ? credential.website : `https://${credential.website}`
-          }" target="_blank">${credential.key} - ${credential.value}</a></li>`
+          }" target="_blank">${credential.key} - ${credential.value}</a> <button class="remove-button" onclick="removeLink('${action}','${credential.key}')"></button></li>`
         );
         resultDiv.innerHTML = listItems.join("");
       } else {
@@ -225,23 +257,6 @@ function updateTable(action, data) {
     default:
       return false;
   }
-}
-
-function updateSavedLinksTable(linksInDB) {
-  emptyResultDiv(resultDiv);
-  const linksList = document.createElement("ul");
-  if (linksInDB) {
-    const listItems = linksInDB.map(
-      (link) => `<li><a href="${
-        link.value.startsWith("http") ? link.value : `https://${link.value}`
-      }" target="_blank">${link.key}</a></li>`
-    );
-    linksList.innerHTML = listItems.join("");
-  } else {
-    linksList.innerText = "No available data please try again later.";
-  }
-  resultDiv.appendChild(linksList);
-  return true;
 }
 
 

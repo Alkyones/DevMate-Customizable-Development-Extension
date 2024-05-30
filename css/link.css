@@ -52,6 +52,8 @@ a {
 
 a:hover {
   background-color: #ff4e44;
+  border-radius: 25% 10%;
+  color: #fff;
 }
 
 a.disabled {
@@ -135,5 +137,28 @@ li {
 
 .comingSoon:hover::before {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+.remove-button {
+  background-color: transparent !important;
+  font-weight: bold;;
+  color: #fff;
+  border-radius: 10% 25%;
+  cursor: pointer;
+}
+
+.remove-button:after {
+  content: 'X'
+}
+
+.remove-button:hover {
+  background-color: #ff6f61 !important;
+}
+
+
+.remove-button:hover:after {
+  opacity: 1;
+  content: "Remove";
+
 }
 
