@@ -24,4 +24,4 @@ Multi-Browser extension for developers.
 
 # Credentials
 -Saving and transferring credentials to save time and effort.
-![preview](/assets/credentials.png)
+![preview](/assets/creedentials.png)
