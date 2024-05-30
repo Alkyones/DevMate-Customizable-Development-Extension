@@ -95,8 +95,8 @@ request.onupgradeneeded = (event) => {
   db = event.target.result;
   console.log("Object Store creation");
   // Create an objectStore for this database
-  const usefulLinksObject = db.createObjectStore("usefulLinks", { autoIncrement: true });
-  const credentialsObject = db.createObjectStore("credentials", { autoIncrement: true });
+  const usefulLinksObject = db.createObjectStore("usefulLinks", { keyPath: 'key' });
+  const credentialsObject = db.createObjectStore("credentials", { keyPath: 'key' });
 
   // Create indexes
   usefulLinksObject.createIndex("value", "value", { unique: false });
@@ -226,41 +226,34 @@ async function getDataFromDB(collection){
 
 function updateTable(action, data) {
   emptyResultDiv(resultDiv);
-  switch (action) {
-    case 'usefulLinks':
-      if (data) {
-        const listItems = data.map(
-          (link) => `<li><a href="${
-            link.value.startsWith("http")? link.value : `https://${link.value}`
-          }" target="_blank">${link.key}</a> <button class="remove-button" onclick="removeLink('${action}','${link.key}')"></button></li>`
-        );
-        resultDiv.innerHTML = listItems.join("");
-      } else {
-        resultDiv.innerText = "No available data please try again later.";
-      }
-   
-
-      return true;
-    case 'credentials':
-      if (data) {
-        const listItems = data.map(
-          (credential) => `<li><a href="${
-            credential.website.startsWith("http") ? credential.website : `https://${credential.website}`
-          }" target="_blank">${credential.key} - ${credential.value}</a> <button class="remove-button" onclick="removeLink('${action}','${credential.key}')"></button></li>`
-        );
-        resultDiv.innerHTML = listItems.join("");
-      } else {
-        resultDiv.innerText = "No available data please try again later.";
-      }
-      
-      return true;
-    default:
-      return false;
+  if (!data) {
+    resultDiv.innerText = "No available data please try again later.";
+    return;
   }
+
+  const listItems = createListItems(data, action);
+  resultDiv.innerHTML = listItems.join("");
+
+  const removeButtons = resultDiv.querySelectorAll('.remove-button');
+  removeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      removeLink(button.getAttribute('data-action'), button.getAttribute('data-key'));
+    });
+  });
 }
 
+function createListItems(data, action) {
+  return data.map((item) => {
+    let link = '';
+    if (action === 'usefulLinks') {
+      link = item.value.startsWith("http") ? item.value : `https://${item.value}`;
+    } else {
+      link = item.website.startsWith("http") ? item.website : `https://${item.website}`;
+    }
+    return `<li><a href="${link}" target="_blank">${item.key}</a> <button class="remove-button" data-action="${action}" data-key="${item.key}"></button></li>`;
+  });
+}
 
-//MAIN MENU
 showLinksButton.addEventListener("click", async function (event) {
   await toggleDisplay(showLinksButton, visibleState);
   if (visibleState.linksListVisible) {
