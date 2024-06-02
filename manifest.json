@@ -3,7 +3,18 @@
   "name": "DevMate",
   "version": "1.0",
   "description": "View and copy local storage keys with additional features for development purposes.",
-  "permissions": ["activeTab", "storage", "scripting", "history"],
+  "permissions": ["activeTab", "webRequest", "storage", "scripting", "history"],
+  "host_permissions": ["<all_urls>", "*://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["functions.js", "db.js"],
+      "matches": ["https://*.example.com/*"]
+    }
+  ],
+
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -18,4 +29,3 @@
     "128": "icons/icon128.png"
   }
 }
- 
