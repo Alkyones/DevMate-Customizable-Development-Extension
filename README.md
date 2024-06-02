@@ -30,4 +30,5 @@ Multi-Browser extension for developers.
 
 # Fetches
 -In this extension fetches can be read and copied, It provides developers to acquire fetch information faster.
+  - When user copies the fetch it automatically turns fetch into request, user can paste the copied value and send the fetch request.
 ![preview](/assets/fetches.png)
