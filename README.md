@@ -27,3 +27,7 @@ Multi-Browser extension for developers.
 # Credentials
 -Saving and transferring credentials to save time and effort.
 ![preview](/assets/creedentials.png)
+
+# Fetches
+-In this extension fetches can be read and copied, It provides developers to acquire fetch information faster.
+![preview](/assets/fetches.png)
