@@ -1,119 +1,93 @@
-//VARIABLES
+import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable } from './functions.js';
+import { addLink, addCredential, getDataFromDB } from './db.js';
+
+
+
 const resultDiv = document.getElementById("result");
 const credentialsDiv = document.getElementById("credentials");
+const addLinksDiv = document.getElementById("links");
+const showLocalStorageButton = document.getElementById("checkButton");
+const credentialsButton = document.getElementById("credentialsButton");
+const saveLinkButton = document.getElementById("saveLinkButton");
+const showLinksButton = document.getElementById("showLinksButton");
+const saveCredentialButton = document.getElementById("saveCredentialButton");
+const usefulLinkKeyInput = document.getElementById("linkKeyInput");
+const usefulLinkValueInput = document.getElementById("linkValueInput");
+const credentialsWebsiteInput = document.getElementById("credentialsWebsiteInput");
+const credentialsKeyInput = document.getElementById("credentialsKeyInput");
+const credentialsValueInput = document.getElementById("credentialsValueInput");
+const credentialsList = document.getElementById("credentialsList");
+const fetchListDiv = document.getElementById("fetch-requests");
+const fetchList = document.getElementById("fetchRequestList");
+const showFetchesButton = document.getElementById("fetchesButton");
 
 const visibleState = {
   localStorageVisible: false,
   linksListVisible: false,
-  credentialsVisible: false
-}
-
-const checkButton = document.getElementById("checkButton");
-const credentialsButton = document.getElementById("credentialsButton");
-
-const showLinksButton = document.getElementById("showLinksButton");
-const addLinksDiv = document.getElementById("links");
-
-const linkKeyInput = document.getElementById("linkKeyInput");
-const linkValueInput = document.getElementById("linkValueInput");
-const saveLinkButton = document.getElementById("saveLinkButton");
-const usefulLinks = [
-];
-
-const credentialsWebsiteInput = document.getElementById("credentialsWebsiteInput");
-const credentialsKeyInput = document.getElementById("credentialsKeyInput");
-const credentialsValueInput = document.getElementById("credentialsValueInput");
-const saveCredentialButton = document.getElementById("saveCredentialButton");
-const credentialsList = document.getElementById("credentialsList");
-
-
-//Toggle functions
-
-const emptyResultDiv = (div) => {
-  div.innerHTML = "";
-  return div
+  credentialsVisible: false,
+  fetchListVisible: false
 }
 
 const toggleDisplay = async (changeStateButton, visibleState) => {
-  let { localStorageVisible, linksListVisible, credentialsVisible } = visibleState;
-  
-  emptyResultDiv(resultDiv);
-  // emptyResultDiv(credentialsDiv);
-
+  let { localStorageVisible, linksListVisible, credentialsVisible, fetchListVisible } = visibleState;
+  emptyDiv(resultDiv);
+  emptyDiv(credentialsList);
+  emptyDiv(fetchList)
   switch (changeStateButton) {
-      case checkButton: {
-          localStorageVisible = !localStorageVisible;
+    case showLocalStorageButton: {
+      localStorageVisible = !localStorageVisible;
 
-          visibleState.localStorageVisible = localStorageVisible;
-          visibleState.linksListVisible = false;
-          visibleState.credentialsVisible = false;
-          break;
-      }
-      case showLinksButton: {
-          linksListVisible = !linksListVisible;
+      visibleState.localStorageVisible = localStorageVisible;
+      visibleState.linksListVisible = false;
+      visibleState.credentialsVisible = false;
+      visibleState.fetchListVisible = false;
 
-          visibleState.linksListVisible = linksListVisible;
-          visibleState.credentialsVisible = false;
-          visibleState.localStorageVisible = false;
-          break;
-      }
-      case credentialsButton: {
-          credentialsVisible = !credentialsVisible;
+      break;
+    }
+    case showLinksButton: {
+      linksListVisible = !linksListVisible;
 
-          visibleState.credentialsVisible = credentialsVisible;
-          visibleState.linksListVisible = false;
-          visibleState.localStorageVisible = false;
-          break;
-      }
+      visibleState.linksListVisible = linksListVisible;
+      visibleState.credentialsVisible = false;
+      visibleState.localStorageVisible = false;
+      visibleState.fetchListVisible = false;
+
+      break;
+    }
+    case credentialsButton: {
+      credentialsVisible = !credentialsVisible;
+
+      visibleState.credentialsVisible = credentialsVisible;
+      visibleState.linksListVisible = false;
+      visibleState.localStorageVisible = false;
+      visibleState.fetchListVisible = false;
+
+      break;
+    }
+
+    case showFetchesButton: {
+      fetchListVisible = !fetchListVisible
+
+      visibleState.fetchListVisible = fetchListVisible
+      visibleState.linksListVisible = false
+      visibleState.credentialsVisible = false
+      visibleState.localStorageVisible = false
+      break
+
+    }
+
   }
-  checkButton.textContent = visibleState.localStorageVisible == true ? "Hide Local Storage" : "Show Local Storage";
+  showLocalStorageButton.textContent = visibleState.localStorageVisible == true ? "Hide Local Storage" : "Show Local Storage";
   showLinksButton.textContent = visibleState.linksListVisible == true ? "Hide Useful Links" : "Show Useful Links";
+  credentialsButton.textContent = visibleState.credentialsVisible == true ? "Hide Credentials" : "Show Credentials"
+  showFetchesButton.textContent = visibleState.fetchListVisible == true ? "Hide Fetch Requests" : "Show Fetch Requests"
+
   addLinksDiv.hidden = visibleState.linksListVisible == false ? true : false;
   credentialsDiv.hidden = visibleState.credentialsVisible == false ? true : false;
-  credentialsButton.textContent = visibleState.credentialsVisible == true ? "Hide Credentials" : "Show Credentials"
+  fetchListDiv.hidden = visibleState.fetchListVisible == false ? true : false
 
 
   return visibleState;
-};
-
-//
-
-//DB functions
-let db;
-
-const request = window.indexedDB.open("DevToolsDB", 3);
-request.onerror = (event) => {
-  alert("Database open failed. Be aware most of the functions will not work.");
-};
-request.onsuccess = (event) => {
-  db = event.target.result;
-  console.log("Database opened successfully");
-
-};
-
-request.onupgradeneeded = (event) => {
-  db = event.target.result;
-  console.log("Object Store creation");
-  // Create an objectStore for this database
-  const usefulLinksObject = db.createObjectStore("usefulLinks", { keyPath: 'key' });
-  const credentialsObject = db.createObjectStore("credentials", { keyPath: 'key' });
-
-  // Create indexes
-  usefulLinksObject.createIndex("value", "value", { unique: false });
-  credentialsObject.createIndex("value", "value", { unique: false });
-
-
-
-  usefulLinksObject.transaction.oncomplete = () => {
-    const usefulLinksObjectStore = db
-    .transaction("usefulLinks", "readwrite")
-    .objectStore("usefulLinks");
-
-    usefulLinks.forEach((usefulLink) => {
-      console.log(usefulLink);
-      usefulLinksObjectStore.add({ key: usefulLink.key, value: usefulLink.value});
-    });
-  };
 };
 
 
@@ -121,151 +95,49 @@ saveCredentialButton.addEventListener("click", async function () {
   const website = credentialsWebsiteInput.value.trim();
   const key = credentialsKeyInput.value.trim();
   const value = credentialsValueInput.value;
-  if(key.length > 2 && value.length > 2, website.length > 2){
-    db.transaction("credentials", "readwrite")
-      .objectStore("credentials")
-      .add({ website, key, value } );
+  if (key.length > 2 && value.length > 2, website.length > 2) {
+    await addCredential(website, key, value);
 
-      credentialsWebsiteInput.value = "";
-      credentialsKeyInput.value = "";
-      credentialsValueInput.value = "";
+    credentialsWebsiteInput.value = "";
+    credentialsKeyInput.value = "";
+    credentialsValueInput.value = "";
   } else {
     alert("Please enter both a key and a value.");
   }
 
   const data = await getDataFromDB('credentials');
-  updateTable('credentials',data);
+  await updateTable('credentials', data, resultDiv);
 });
 
 saveLinkButton.addEventListener("click", async function () {
-  const key = linkKeyInput.value.trim();
-  const value = linkValueInput.value;
-  if(typeof key === 'string' && key.length > 2 && typeof value === 'string' && value.length > 2){
-    db.transaction("usefulLinks", "readwrite")
-    .objectStore("usefulLinks")
-    .add({ key: key, value: value });
+  const key = usefulLinkKeyInput.value.trim();
+  const value = usefulLinkValueInput.value;
+  if (typeof key === 'string' && key.length > 2 && typeof value === 'string' && value.length > 2) {
+    await addLink(key, value);
 
-    linkKeyInput.value = "";
-    linkValueInput.value = "";
+    usefulLinkKeyInput.value = "";
+    usefulLinkValueInput.value = "";
   } else {
     alert("Please enter both a key and a value.");
   }
 
   const data = await getDataFromDB('usefulLinks');
-  updateTable('usefulLinks',data);
+  await updateTable('usefulLinks', data, resultDiv);
 
 });
 
-
-
-function checkLocalStorage() {
-  const isEmpty = Object.keys(localStorage).length === 0;
-  const localStorageData = isEmpty ? null : localStorage;
-  chrome.runtime.sendMessage({ isEmpty, localStorageData });
-}
-
-function copyValueToClipboard(value) {
-  const tempInput = document.createElement("input");
-  document.body.appendChild(tempInput);
-  tempInput.value = value;
-  tempInput.select();
-  document.execCommand("copy");
-  document.body.removeChild(tempInput);
-}
-
-async function removeLink(action, key) {
-  switch (action) {
-    case 'usefulLinks':
-      db.transaction("usefulLinks", "readwrite")
-      .objectStore("usefulLinks")
-      .delete(key)
-      .onsuccess = async function(event) {
-         console.log(`Link with key ${key} removed successfully`);
-         // Update the display
-         const data = await getDataFromDB('usefulLinks');
-         updateTable('usefulLinks', data);
-       };
-
-       return true
-
-    case 'credentials':
-      db.transaction("credentials", "readwrite")
-      .objectStore("credentials")
-      .delete(key)
-      .onsuccess = async function(event) {
-         console.log(`credential with key ${key} removed successfully`);
-         // Update the display
-         const data = await getDataFromDB('credentials');
-         updateTable('credentials', data);
-       };
-
-       return true
-    default:
-       return true
-  }
- 
-}
-
-async function getDataFromDB(collection){
-  return new Promise((resolve, reject) => {
-    const request = db.transaction(collection)
-                 .objectStore(collection)
-                 .getAll();
-
-    request.onsuccess = ()=> {
-        const data = request.result;
-        resolve(data);
-    }
-
-    request.onerror = (err)=> {
-        console.error(`Error to get all data: ${err}`);
-        resolve(null);
-    }
-  });
-}
-
-function updateTable(action, data) {
-  emptyResultDiv(resultDiv);
-  if (!data) {
-    resultDiv.innerText = "No available data please try again later.";
-    return;
-  }
-
-  const listItems = createListItems(data, action);
-  resultDiv.innerHTML = listItems.join("");
-
-  const removeButtons = resultDiv.querySelectorAll('.remove-button');
-  removeButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      removeLink(button.getAttribute('data-action'), button.getAttribute('data-key'));
-    });
-  });
-}
-
-function createListItems(data, action) {
-  return data.map((item) => {
-    let link = '';
-    if (action === 'usefulLinks') {
-      link = item.value.startsWith("http") ? item.value : `https://${item.value}`;
-    } else {
-      link = item.website.startsWith("http") ? item.website : `https://${item.website}`;
-    }
-    return `<li><a href="${link}" target="_blank">${item.key}</a> <button class="remove-button" data-action="${action}" data-key="${item.key}"></button></li>`;
-  });
-}
-
-showLinksButton.addEventListener("click", async function (event) {
+showLinksButton.addEventListener("click", async function () {
   await toggleDisplay(showLinksButton, visibleState);
   if (visibleState.linksListVisible) {
     const linksInDB = await getDataFromDB('usefulLinks');
-    updateTable('usefulLinks',linksInDB)
+    await updateTable('usefulLinks', linksInDB, resultDiv)
     return true;
   }
 });
 
-checkButton.addEventListener("click", async function () {
-  await toggleDisplay(checkButton, visibleState);
- 
+showLocalStorageButton.addEventListener("click", async function () {
+  await toggleDisplay(showLocalStorageButton, visibleState);
+
   if (visibleState.localStorageVisible == true) {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       const activeTab = tabs[0];
@@ -277,53 +149,86 @@ checkButton.addEventListener("click", async function () {
   }
 });
 
-credentialsButton.addEventListener("click",async function () {
-  await toggleDisplay(credentialsButton, visibleState); 
+credentialsButton.addEventListener("click", async function () {
+  await toggleDisplay(credentialsButton, visibleState);
   if (visibleState.credentialsVisible) {
     const credentialsData = await getDataFromDB('credentials');
-    updateTable('credentials',credentialsData);
+    await updateTable('credentials', credentialsData, resultDiv);
     return true;
 
-  } 
+  }
 });
-//
 
+showFetchesButton.addEventListener("click", async function () {
+  await toggleDisplay(showFetchesButton, visibleState);
+  if (visibleState.fetchListVisible) {
+    return true;
+  }
+});
 
-
-//EXECUTION
 chrome.runtime.onMessage.addListener(function (message) {
-  if (message.isEmpty) {
-    resultDiv.textContent = "Local Storage is empty.";
-  } else {
-    const localStorageData = message.localStorageData;
-    if (localStorageData) {
-      const keys = Object.keys(localStorageData);
-      const keysList = document.createElement("ul");
-      keys.forEach((key) => {
-        const listItem = document.createElement("li");
-        const keyLink = document.createElement("a");
-        const displayedKey = key.length > 45 ? key.slice(0, 45) + "..." : key;
-        keyLink.textContent = displayedKey;
-        keyLink.href = "#";
+  if (message.action === "localStorage") {
 
-        keyLink.addEventListener("click", function (event) {
-          event.preventDefault();
-          copyValueToClipboard(localStorageData[key]);
-          keyLink.textContent = "Copied to Clipboard!";
-          keyLink.style.color = "orange";
-          setTimeout(() => {
-            keyLink.textContent = displayedKey;
-            keyLink.style.color = "";
-          }, 1500);
-        });
-
-        listItem.appendChild(keyLink);
-        keysList.appendChild(listItem);
-      });
-      resultDiv.innerHTML = "";
-      resultDiv.appendChild(keysList);
+    if (message.isEmpty) {
+      resultDiv.textContent = "Local Storage is empty.";
     } else {
-      resultDiv.textContent = "Local Storage data is unavailable.";
+      const localStorageData = message.localStorageData;
+      if (localStorageData) {
+        const keys = Object.keys(localStorageData);
+        const keysList = document.createElement("ul");
+        keys.forEach((key) => {
+          const listItem = document.createElement("li");
+          const keyLink = document.createElement("a");
+          const displayedKey = key.length > 45 ? key.slice(0, 45) + "..." : key;
+          keyLink.textContent = displayedKey;
+          keyLink.href = "#";
+
+          keyLink.addEventListener("click", function (event) {
+            event.preventDefault();
+            copyValueToClipboard(localStorageData[key]);
+            keyLink.textContent = "Copied to Clipboard!";
+            keyLink.style.color = "orange";
+            setTimeout(() => {
+              keyLink.textContent = displayedKey;
+              keyLink.style.color = "";
+            }, 1500);
+          });
+
+          listItem.appendChild(keyLink);
+          keysList.appendChild(listItem);
+        });
+        resultDiv.innerHTML = "";
+        resultDiv.appendChild(keysList);
+      } else {
+        resultDiv.textContent = "Local Storage data is unavailable.";
+      }
     }
   }
 });
+
+chrome.runtime.onMessage.addListener((request) => {
+  if (request.action === "addFetchRequest") {
+    const fetchName = request.requestName;
+    const fetchCode = request.fetchCode;
+
+    const fetchList = document.getElementById("fetchRequestList");
+    const newListItem = document.createElement("li");
+    const codeButton = document.createElement("a");
+
+    codeButton.textContent = fetchName;
+    codeButton.addEventListener("click", () => {
+      copyValueToClipboard(fetchCode);
+      codeButton.textContent = "Copied to Clipboard!";
+      codeButton.style.color = "orange";
+      setTimeout(() => {
+        codeButton.textContent = fetchName;
+        codeButton.style.color = "";
+      }, 1500)
+    });
+
+    newListItem.appendChild(codeButton);
+    fetchList.appendChild(newListItem);
+  }
+});
+
+chrome.runtime.sendMessage({ action: "contentScriptReady" });

@@ -44,6 +44,7 @@ a {
   color: #ff6f61;
   text-decoration: none;
   transition: color 0.3s, background-color 0.3s;
+  cursor: pointer;
   display: inline-block;
   padding: 10px;
   border-radius: 4px;

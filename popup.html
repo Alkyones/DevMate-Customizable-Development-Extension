@@ -8,8 +8,8 @@
   <div class="button-container">
     <button id="checkButton">Check Local Storage</button>
     <button id="showLinksButton">Show Useful Links</button>
-    <button class="comingSoon" disabled>Fetch/XHR Modify</button>
-    <button class="" id="credentialsButton">Add Credentials</button>
+    <button id="fetchesButton">Show Fetches</button>
+    <button id="credentialsButton">Add Credentials</button>
 
 
   </div>
@@ -27,8 +27,12 @@
     <button id="saveCredentialButton">Save Value</button>
     <ul id="credentialsList"></ul>
   </div>
+  <div id="fetch-requests" hidden>
+    <ul id="fetchRequestList"></ul>
+  </div>
   <div id="result"></div>
   <div id="copied"></div>
-  <script src="scripts/popup.js"></script>
+  <script src="scripts/popup.js" type="module"></script>
+  <script src="background.js"></script>
 </body>
 </html>
