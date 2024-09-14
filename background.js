@@ -13,14 +13,14 @@ chrome.runtime.onMessage.addListener((request) => {
 
 chrome.webRequest.onBeforeSendHeaders.addListener(
   (details) => {
-    if (details.type === "xmlhttprequest" && !details.initiator.includes(manipators)) {
+    if (details.type === "xmlhttprequest" &&!details.initiator.includes(manipators)) {
       const method = details.method.toUpperCase();
       const url = details.url;
       const headers = {};
 
       const lastIndex = url.lastIndexOf('/');
       const displayedKey = lastIndex > 0
-       ? `${url.slice(0, 20)}...${url.slice(lastIndex)}`
+      ? `${url.slice(0, 20)}...${url.slice(lastIndex)}`
         : url.slice(0, 20) + "...";
 
       for (const header of details.requestHeaders) {
@@ -29,11 +29,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 
       const fetchCode = `fetch("${url}", {
         method: "${method}",
-        headers: {
-          ${Object.entries(headers)
-           .map(([key, value]) => `${key}: "${value}"`)
-           .join(", ")}
-        },
+        ${Object.keys(headers).length > 0? `headers: { ${Object.entries(headers).map(([key, value]) => `${key}: ${value.replace(/"/g, '\\"')}`).join(", ")} },` : ""}
       });`;
 
       if (contentScriptReady) {

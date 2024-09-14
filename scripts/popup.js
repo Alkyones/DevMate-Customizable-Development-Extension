@@ -231,4 +231,9 @@ chrome.runtime.onMessage.addListener((request) => {
   }
 });
 
+chrome.browserAction.setPopup({
+  popup: "popup.html",
+  focus: true
+});
+
 chrome.runtime.sendMessage({ action: "contentScriptReady" });

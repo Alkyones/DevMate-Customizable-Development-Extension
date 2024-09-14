@@ -28,7 +28,7 @@ const createListItems = (data, action) => {
       } else {
         link = item.website.startsWith("http") ? item.website : `https://${item.website}`;
       }
-      return `<li><a href="${link}" target="_blank">${item.key}</a> <button class="remove-button" data-action="${action}" data-key="${item.key}"></button></li>`;
+      return `<li><a href="${link}" target="_blank" data-value="${item.value}">${item.key}</a> <button class="remove-button" data-action="${action}" data-key="${item.key}"></button></li>`;
     });
   }
 
@@ -38,7 +38,6 @@ const updateTable = async (action, data, resultDiv) => {
       resultDiv.innerText = "No available data please try again later.";
       return;
     }
-  
     const listItems = createListItems(data, action);
     resultDiv.innerHTML = listItems.join("");
   

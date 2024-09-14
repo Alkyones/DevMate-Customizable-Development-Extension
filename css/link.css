@@ -87,6 +87,10 @@ ul {
 }
 
 li {
+  list-style-type: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 10px;
 }
 
@@ -141,11 +145,12 @@ li {
 }
 
 .remove-button {
-  background-color: transparent !important;
+  /* background-color: transparent !important; */
   font-weight: bold;;
   color: #fff;
   border-radius: 10% 25%;
   cursor: pointer;
+  transition: 0.9s;
 }
 
 .remove-button:after {
