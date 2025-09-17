@@ -9,6 +9,7 @@ const addLinksDiv = document.getElementById("links");
 const showLocalStorageButton = document.getElementById("checkButton");
 const credentialsButton = document.getElementById("credentialsButton");
 const saveLinkButton = document.getElementById("saveLinkButton");
+const saveCurrentLinkButton = document.getElementById("saveCurrentLinkButton");
 const showLinksButton = document.getElementById("showLinksButton");
 const saveCredentialButton = document.getElementById("saveCredentialButton");
 const usefulLinkKeyInput = document.getElementById("linkKeyInput");
@@ -126,6 +127,20 @@ saveLinkButton.addEventListener("click", async function () {
 
 });
 
+saveCurrentLinkButton.addEventListener("click", async function () {
+  chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
+    const activeTab = tabs[0];
+    const url = activeTab.url;
+    const title = activeTab.title;
+    const key = title;
+    const value = url;
+
+    await addLink(key, value);
+    const data = await getDataFromDB('usefulLinks');
+    await updateTable('usefulLinks', data, resultDiv);
+  });
+});
+
 showLinksButton.addEventListener("click", async function () {
   await toggleDisplay(showLinksButton, visibleState);
   if (visibleState.linksListVisible) {
@@ -231,7 +246,7 @@ chrome.runtime.onMessage.addListener((request) => {
   }
 });
 
-chrome.browserAction.setPopup({
+chrome.action.setPopup({
   popup: "popup.html",
   focus: true
 });
