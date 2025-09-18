@@ -248,7 +248,6 @@ chrome.runtime.onMessage.addListener((request) => {
 
 chrome.action.setPopup({
   popup: "popup.html",
-  focus: true
 });
 
 chrome.runtime.sendMessage({ action: "contentScriptReady" });
