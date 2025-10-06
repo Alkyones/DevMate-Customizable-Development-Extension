@@ -21,19 +21,27 @@ const credentialsList = document.getElementById("credentialsList");
 const fetchListDiv = document.getElementById("fetch-requests");
 const fetchList = document.getElementById("fetchRequestList");
 const showFetchesButton = document.getElementById("fetchesButton");
+const generateCredentialsDiv = document.getElementById("generate-credentials");
+const generateCredentialsButton = document.getElementById("generateCredentialsButton");
+const generateUsernameButton = document.getElementById("generateUsernameButton");
+const generatePasswordButton = document.getElementById("generatePasswordButton");
+const generateEmailButton = document.getElementById("generateEmailButton");
+const generatedResultDiv = document.getElementById("generatedResult");
 
 const visibleState = {
   localStorageVisible: false,
   linksListVisible: false,
   credentialsVisible: false,
-  fetchListVisible: false
+  fetchListVisible: false,
+  generateCredentialsVisible: false
 }
 
 const toggleDisplay = async (changeStateButton, visibleState) => {
-  let { localStorageVisible, linksListVisible, credentialsVisible, fetchListVisible } = visibleState;
+  let { localStorageVisible, linksListVisible, credentialsVisible, fetchListVisible, generateCredentialsVisible } = visibleState;
   emptyDiv(resultDiv);
   emptyDiv(credentialsList);
   emptyDiv(fetchList)
+  emptyDiv(generateCredentialsDiv)
   switch (changeStateButton) {
     case showLocalStorageButton: {
       localStorageVisible = !localStorageVisible;
@@ -42,6 +50,7 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
       visibleState.linksListVisible = false;
       visibleState.credentialsVisible = false;
       visibleState.fetchListVisible = false;
+      visibleState.generateCredentialsVisible = false;
 
       break;
     }
@@ -52,7 +61,7 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
       visibleState.credentialsVisible = false;
       visibleState.localStorageVisible = false;
       visibleState.fetchListVisible = false;
-
+      visibleState.generateCredentialsVisible = false;
       break;
     }
     case credentialsButton: {
@@ -62,7 +71,7 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
       visibleState.linksListVisible = false;
       visibleState.localStorageVisible = false;
       visibleState.fetchListVisible = false;
-
+      visibleState.generateCredentialsVisible = false;
       break;
     }
 
@@ -73,20 +82,34 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
       visibleState.linksListVisible = false
       visibleState.credentialsVisible = false
       visibleState.localStorageVisible = false
+      visibleState.generateCredentialsVisible = false
       break
 
     }
 
+    case generateCredentialsButton: {
+      generateCredentialsVisible = !generateCredentialsVisible
+
+      visibleState.generateCredentialsVisible = generateCredentialsVisible
+      visibleState.linksListVisible = false
+      visibleState.credentialsVisible = false
+      visibleState.localStorageVisible = false
+      visibleState.fetchListVisible = false
+      break
+    }
   }
   showLocalStorageButton.textContent = visibleState.localStorageVisible == true ? "Hide Local Storage" : "Show Local Storage";
   showLinksButton.textContent = visibleState.linksListVisible == true ? "Hide Useful Links" : "Show Useful Links";
   credentialsButton.textContent = visibleState.credentialsVisible == true ? "Hide Credentials" : "Show Credentials"
   showFetchesButton.textContent = visibleState.fetchListVisible == true ? "Hide Fetch Requests" : "Show Fetch Requests"
+  generateCredentialsButton.textContent = visibleState.generateCredentialsVisible == true ? "Hide Credential Generator" : "Show Credential Generator"
 
+  addLinksDiv.style.display = visibleState.linksListVisible || visibleState.credentialsVisible || visibleState.fetchListVisible || visibleState.generateCredentialsVisible ? "block" : "none";
+  generateCredentialsDiv.hidden = visibleState.generateCredentialsVisible == false ? true : false;
   addLinksDiv.hidden = visibleState.linksListVisible == false ? true : false;
+  console.log(addLinksDiv.style.display)
   credentialsDiv.hidden = visibleState.credentialsVisible == false ? true : false;
-  fetchListDiv.hidden = visibleState.fetchListVisible == false ? true : false
-
+  fetchListDiv.hidden = visibleState.fetchListVisible == false ? true : false;
 
   return visibleState;
 };
@@ -177,6 +200,13 @@ credentialsButton.addEventListener("click", async function () {
 showFetchesButton.addEventListener("click", async function () {
   await toggleDisplay(showFetchesButton, visibleState);
   if (visibleState.fetchListVisible) {
+    return true;
+  }
+});
+
+generateCredentialsButton.addEventListener("click", async function () {
+  await toggleDisplay(generateCredentialsButton, visibleState);
+  if (visibleState.generateCredentialsVisible) {
     return true;
   }
 });
