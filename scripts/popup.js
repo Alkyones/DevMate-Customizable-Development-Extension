@@ -1,4 +1,4 @@
-import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable } from './functions.js';
+import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable, generateUsername, generatePassword, generateEmail } from './functions.js';
 import { addLink, addCredential, getDataFromDB } from './db.js';
 
 
@@ -26,7 +26,8 @@ const generateCredentialsButton = document.getElementById("generateCredentialsBu
 const generateUsernameButton = document.getElementById("generateUsernameButton");
 const generatePasswordButton = document.getElementById("generatePasswordButton");
 const generateEmailButton = document.getElementById("generateEmailButton");
-const generatedResultDiv = document.getElementById("generatedResult");
+const generatedResult = document.getElementById("generatedResult");
+
 
 const visibleState = {
   localStorageVisible: false,
@@ -41,7 +42,6 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
   emptyDiv(resultDiv);
   emptyDiv(credentialsList);
   emptyDiv(fetchList)
-  emptyDiv(generateCredentialsDiv)
   switch (changeStateButton) {
     case showLocalStorageButton: {
       localStorageVisible = !localStorageVisible;
@@ -104,13 +104,11 @@ const toggleDisplay = async (changeStateButton, visibleState) => {
   showFetchesButton.textContent = visibleState.fetchListVisible == true ? "Hide Fetch Requests" : "Show Fetch Requests"
   generateCredentialsButton.textContent = visibleState.generateCredentialsVisible == true ? "Hide Credential Generator" : "Show Credential Generator"
 
-  addLinksDiv.style.display = visibleState.linksListVisible || visibleState.credentialsVisible || visibleState.fetchListVisible || visibleState.generateCredentialsVisible ? "block" : "none";
   generateCredentialsDiv.hidden = visibleState.generateCredentialsVisible == false ? true : false;
   addLinksDiv.hidden = visibleState.linksListVisible == false ? true : false;
-  console.log(addLinksDiv.style.display)
   credentialsDiv.hidden = visibleState.credentialsVisible == false ? true : false;
   fetchListDiv.hidden = visibleState.fetchListVisible == false ? true : false;
-
+  
   return visibleState;
 };
 
@@ -211,6 +209,39 @@ generateCredentialsButton.addEventListener("click", async function () {
   }
 });
 
+generateUsernameButton.addEventListener("click", () => {
+  const username = generateUsername();
+  generatedResult.textContent = username;
+});
+
+generatePasswordButton.addEventListener("click", () => {
+  const password = generatePassword();
+  generatedResult.textContent = password;
+});
+
+
+generateEmailButton.addEventListener("click", () => {
+  const email = generateEmail();
+  generatedResult.textContent = email;
+});
+
+generatedResult.addEventListener("click", () => {
+  if (generatedResult.textContent.length > 0) {
+    copyValueToClipboard(generatedResult.textContent);
+    generatedResult.textContent = "copied to clipboard!";
+    generatedResult.style.transition = "opacity 1.5s";
+    generatedResult.style.opacity = "1";
+    setTimeout(() => {
+      generatedResult.style.opacity = "0";
+    }, 100);
+    setTimeout(() => {
+      generatedResult.textContent = "";
+      generatedResult.style.opacity = "1";
+      generatedResult.style.transition = "";
+    }, 1600);
+  }
+});
+
 chrome.runtime.onMessage.addListener(function (message) {
   if (message.action === "localStorage") {
 
@@ -252,7 +283,8 @@ chrome.runtime.onMessage.addListener(function (message) {
 });
 
 chrome.runtime.onMessage.addListener((request) => {
-  if (request.action === "addFetchRequest") {
+  // Only handle fetch/XHR requests if fetches tab is visible
+  if (request.action === "addFetchRequest" && visibleState.fetchListVisible) {
     const fetchName = request.requestName;
     const fetchCode = request.fetchCode;
 

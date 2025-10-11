@@ -51,4 +51,31 @@ const updateTable = async (action, data, resultDiv) => {
     });
   }
 
-export { checkLocalStorage, emptyDiv, copyValueToClipboard, updateTable};
+
+  function generateUsername() {
+    const adjectives = ["fast", "cool", "smart", "silent", "brave", "lucky", "happy", "wild"];
+    const animals = ["lion", "tiger", "bear", "wolf", "fox", "eagle", "hawk", "owl"];
+    const number = Math.floor(Math.random() * 1000);
+    return (
+      adjectives[Math.floor(Math.random() * adjectives.length)] +
+      animals[Math.floor(Math.random() * animals.length)] +
+      number
+    );
+  }
+  
+  function generatePassword() {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+  
+  function generateEmail() {
+    const providers = ["gmail.com", "yahoo.com", "outlook.com", "mail.com"];
+    const username = generateUsername();
+    return username + "@" + providers[Math.floor(Math.random() * providers.length)];
+  }
+
+export { checkLocalStorage, emptyDiv, copyValueToClipboard, updateTable, generateUsername, generatePassword, generateEmail };

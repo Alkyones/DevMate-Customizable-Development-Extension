@@ -5,37 +5,30 @@ const manipators = [
 
 
 chrome.runtime.onMessage.addListener((request) => {
-  console.log(request, "request");
   if (request.action === "contentScriptReady") {
     contentScriptReady = true;
   }
 });
 
+
 chrome.webRequest.onBeforeSendHeaders.addListener(
   (details) => {
-    if (details.type === "xmlhttprequest" &&!details.initiator.includes(manipators)) {
-      const method = details.method.toUpperCase();
-      const url = details.url;
-      const headers = {};
-
-      const lastIndex = url.lastIndexOf('/');
-      const displayedKey = lastIndex > 0
-      ? `${url.slice(0, 20)}...${url.slice(lastIndex)}`
-        : url.slice(0, 20) + "...";
-
-      for (const header of details.requestHeaders) {
-        headers[header.name] = header.value;
-      }
-
-      const fetchCode = `fetch("${url}", {
-        method: "${method}",
-        ${Object.keys(headers).length > 0? `headers: { ${Object.entries(headers).map(([key, value]) => `${key}: ${value.replace(/"/g, '\\"')}`).join(", ")} },` : ""}
-      });`;
-
-      if (contentScriptReady) {
-        chrome.runtime.sendMessage({ action: "addFetchRequest", fetchCode, requestName: `${method} ${displayedKey}` });
-      }
-    }
+    if (!contentScriptReady) return;
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        requestDetails = {
+          url: details.url,
+          method: details.method,
+          requestId: details.requestId,
+          requestHeaders: details.requestHeaders,
+          type: details.type
+        }
+        chrome.runtime.sendMessage({
+          action: "addFetchRequest",
+          requestName: details.url,
+          fetchCode: `fetch('${details.url}', { method: '${details.method}', headers: ${JSON.stringify(details.requestHeaders)} })`,
+          requestDetails
+        });
+    });
   },
   { urls: ["<all_urls>"] },
   ["requestHeaders"]

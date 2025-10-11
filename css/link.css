@@ -145,8 +145,7 @@ li {
 }
 
 .remove-button {
-  /* background-color: transparent !important; */
-  font-weight: bold;;
+  font-weight: bold;
   color: #fff;
   border-radius: 10% 25%;
   cursor: pointer;
@@ -168,3 +167,16 @@ li {
 
 }
 
+#generatedResult {
+  display:flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px;
+  color:#ff4e44;
+  border-radius: 4px;
+  word-break: break-all;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 18px;
+}
