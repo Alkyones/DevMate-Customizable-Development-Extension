@@ -1,5 +1,5 @@
-import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable } from './functions.js';
-import { addLink, addCredential, getDataFromDB } from './db.js';
+import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable, generateUsername, generatePassword, generateEmail } from './functions.js';
+import { addLink, addCredential, getDataFromDB, addCapturedRequest, getCapturedRequests, removeCapturedRequest, updateCapturedRequest, dbReady } from './db.js';
 
 
 
@@ -14,6 +14,7 @@ const showLinksButton = document.getElementById("showLinksButton");
 const saveCredentialButton = document.getElementById("saveCredentialButton");
 const usefulLinkKeyInput = document.getElementById("linkKeyInput");
 const usefulLinkValueInput = document.getElementById("linkValueInput");
+const usefulLinksList = document.getElementById("usefulLinks");
 const credentialsWebsiteInput = document.getElementById("credentialsWebsiteInput");
 const credentialsKeyInput = document.getElementById("credentialsKeyInput");
 const credentialsValueInput = document.getElementById("credentialsValueInput");
@@ -21,139 +22,158 @@ const credentialsList = document.getElementById("credentialsList");
 const fetchListDiv = document.getElementById("fetch-requests");
 const fetchList = document.getElementById("fetchRequestList");
 const showFetchesButton = document.getElementById("fetchesButton");
+const captureToggle = document.getElementById('captureToggle');
+const clearCapturedButton = document.getElementById('clearCapturedButton');
+const generateCredentialsDiv = document.getElementById("generate-credentials");
+const generateCredentialsButton = document.getElementById("generateCredentialsButton");
+const generateUsernameButton = document.getElementById("generateUsernameButton");
+const generatePasswordButton = document.getElementById("generatePasswordButton");
+const generateEmailButton = document.getElementById("generateEmailButton");
+const generatedResult = document.getElementById("generatedResult");
+
 
 const visibleState = {
   localStorageVisible: false,
   linksListVisible: false,
   credentialsVisible: false,
-  fetchListVisible: false
+  fetchListVisible: false,
+  generateCredentialsVisible: false
 }
 
+// Utility to update the text label inside toolbar buttons without clobbering their icons
+function setButtonLabel(button, text) {
+  if (!button) return;
+  const lbl = button.querySelector('.btn-label');
+  if (lbl) lbl.textContent = text;
+  else button.textContent = text;
+}
+
+// Panels map: each top-level section has its own sibling container and state key.
+const panelMap = new Map([
+  [showLocalStorageButton, { key: 'localStorageVisible', element: resultDiv }],
+  [showLinksButton, { key: 'linksListVisible', element: addLinksDiv }],
+  [credentialsButton, { key: 'credentialsVisible', element: credentialsDiv }],
+  [showFetchesButton, { key: 'fetchListVisible', element: fetchListDiv }],
+  [generateCredentialsButton, { key: 'generateCredentialsVisible', element: generateCredentialsDiv }]
+]);
+
+// Toggle display: make the clicked panel visible and hide all others. This
+// guarantees panels never appear inside other tabs and keeps state simple.
 const toggleDisplay = async (changeStateButton, visibleState) => {
-  let { localStorageVisible, linksListVisible, credentialsVisible, fetchListVisible } = visibleState;
   emptyDiv(resultDiv);
   emptyDiv(credentialsList);
-  emptyDiv(fetchList)
-  switch (changeStateButton) {
-    case showLocalStorageButton: {
-      localStorageVisible = !localStorageVisible;
+  emptyDiv(fetchList);
 
-      visibleState.localStorageVisible = localStorageVisible;
-      visibleState.linksListVisible = false;
-      visibleState.credentialsVisible = false;
-      visibleState.fetchListVisible = false;
+  // find mapping
+  const info = panelMap.get(changeStateButton);
+  if (!info) return visibleState;
 
-      break;
-    }
-    case showLinksButton: {
-      linksListVisible = !linksListVisible;
-
-      visibleState.linksListVisible = linksListVisible;
-      visibleState.credentialsVisible = false;
-      visibleState.localStorageVisible = false;
-      visibleState.fetchListVisible = false;
-
-      break;
-    }
-    case credentialsButton: {
-      credentialsVisible = !credentialsVisible;
-
-      visibleState.credentialsVisible = credentialsVisible;
-      visibleState.linksListVisible = false;
-      visibleState.localStorageVisible = false;
-      visibleState.fetchListVisible = false;
-
-      break;
-    }
-
-    case showFetchesButton: {
-      fetchListVisible = !fetchListVisible
-
-      visibleState.fetchListVisible = fetchListVisible
-      visibleState.linksListVisible = false
-      visibleState.credentialsVisible = false
-      visibleState.localStorageVisible = false
-      break
-
-    }
-
+  // toggle selected, hide others
+  for (const [, p] of panelMap.entries()) {
+    visibleState[p.key] = (p === info) ? !visibleState[p.key] : false;
   }
-  showLocalStorageButton.textContent = visibleState.localStorageVisible == true ? "Hide Local Storage" : "Show Local Storage";
-  showLinksButton.textContent = visibleState.linksListVisible == true ? "Hide Useful Links" : "Show Useful Links";
-  credentialsButton.textContent = visibleState.credentialsVisible == true ? "Hide Credentials" : "Show Credentials"
-  showFetchesButton.textContent = visibleState.fetchListVisible == true ? "Hide Fetch Requests" : "Show Fetch Requests"
 
-  addLinksDiv.hidden = visibleState.linksListVisible == false ? true : false;
-  credentialsDiv.hidden = visibleState.credentialsVisible == false ? true : false;
-  fetchListDiv.hidden = visibleState.fetchListVisible == false ? true : false
+  // apply hidden state and update labels
+  for (const [btn, p] of panelMap.entries()) {
+    if (p.element) p.element.hidden = !visibleState[p.key];
+  }
 
+  setButtonLabel(showLocalStorageButton, visibleState.localStorageVisible ? "Hide Local Storage" : "Show Local Storage");
+  setButtonLabel(showLinksButton, visibleState.linksListVisible ? "Hide Useful Links" : "Show Useful Links");
+  setButtonLabel(credentialsButton, visibleState.credentialsVisible ? "Hide Credentials" : "Show Credentials");
+  setButtonLabel(showFetchesButton, visibleState.fetchListVisible ? "Hide Fetch Requests" : "Show Fetch Requests");
+  setButtonLabel(generateCredentialsButton, visibleState.generateCredentialsVisible ? "Hide Credential Generator" : "Show Credential Generator");
 
   return visibleState;
 };
 
-
 saveCredentialButton.addEventListener("click", async function () {
+  await dbReady;
   const website = credentialsWebsiteInput.value.trim();
   const key = credentialsKeyInput.value.trim();
-  const value = credentialsValueInput.value;
-  if (key.length > 2 && value.length > 2, website.length > 2) {
+  const value = credentialsValueInput.value.trim();
+  // Require non-empty website, key and value (trimmed)
+  if (website.length > 0 && key.length > 0 && value.length > 0) {
     await addCredential(website, key, value);
 
     credentialsWebsiteInput.value = "";
     credentialsKeyInput.value = "";
     credentialsValueInput.value = "";
   } else {
-    alert("Please enter both a key and a value.");
+    alert("Please enter website, username and password.");
   }
 
   const data = await getDataFromDB('credentials');
-  await updateTable('credentials', data, resultDiv);
+  await updateTable('credentials', data, credentialsList);
 });
 
 saveLinkButton.addEventListener("click", async function () {
-  const key = usefulLinkKeyInput.value.trim();
-  const value = usefulLinkValueInput.value;
-  if (typeof key === 'string' && key.length > 2 && typeof value === 'string' && value.length > 2) {
-    await addLink(key, value);
+  try {
+    console.log('saveLinkButton clicked');
+    await dbReady;
+    const key = (usefulLinkKeyInput && usefulLinkKeyInput.value) ? usefulLinkKeyInput.value.trim() : '';
+    const value = (usefulLinkValueInput && usefulLinkValueInput.value) ? usefulLinkValueInput.value.trim() : '';
+    // Allow short keys/values (non-empty). Trim to ignore accidental spaces.
+    if (key.length > 0 && value.length > 0) {
+      const ok = await addLink(key, value);
+      if (ok) showSnackbar('Link saved');
 
-    usefulLinkKeyInput.value = "";
-    usefulLinkValueInput.value = "";
-  } else {
-    alert("Please enter both a key and a value.");
+      if (usefulLinkKeyInput) usefulLinkKeyInput.value = "";
+      if (usefulLinkValueInput) usefulLinkValueInput.value = "";
+    } else {
+      alert("Please enter both a key and a value.");
+    }
+
+    const data = await getDataFromDB('usefulLinks');
+    await updateTable('usefulLinks', data, usefulLinksList);
+  } catch (err) {
+    console.error('saveLink error', err);
+    showSnackbar('Error saving link');
   }
-
-  const data = await getDataFromDB('usefulLinks');
-  await updateTable('usefulLinks', data, resultDiv);
-
 });
 
 saveCurrentLinkButton.addEventListener("click", async function () {
-  chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
-    const activeTab = tabs[0];
-    const url = activeTab.url;
-    const title = activeTab.title;
-    const key = title;
-    const value = url;
+  try {
+    console.log('saveCurrentLinkButton clicked');
+    await dbReady;
+    chrome.tabs.query({ active: true, currentWindow: true }, async function (tabs) {
+      try {
+        const activeTab = tabs && tabs[0];
+        if (!activeTab) { showSnackbar('No active tab'); return; }
+        const url = activeTab.url;
+        const title = activeTab.title || url;
+        const key = title;
+        const value = url;
 
-    await addLink(key, value);
-    const data = await getDataFromDB('usefulLinks');
-    await updateTable('usefulLinks', data, resultDiv);
-  });
+  const ok = await addLink(key, value);
+  if (ok) showSnackbar('Current link saved');
+  const data = await getDataFromDB('usefulLinks');
+  await updateTable('usefulLinks', data, usefulLinksList);
+      } catch (innerErr) {
+        console.error('saveCurrentLink inner error', innerErr);
+        showSnackbar('Error saving current link');
+      }
+    });
+  } catch (err) {
+    console.error('saveCurrentLink error', err);
+    showSnackbar('Error saving current link');
+  }
 });
 
+// Attach toolbar button handlers that use the centralized toggleDisplay.
 showLinksButton.addEventListener("click", async function () {
+  await dbReady;
   await toggleDisplay(showLinksButton, visibleState);
   if (visibleState.linksListVisible) {
     const linksInDB = await getDataFromDB('usefulLinks');
-    await updateTable('usefulLinks', linksInDB, resultDiv)
-    return true;
+  await updateTable('usefulLinks', linksInDB, usefulLinksList);
   }
 });
 
 showLocalStorageButton.addEventListener("click", async function () {
+  await dbReady;
   await toggleDisplay(showLocalStorageButton, visibleState);
-
-  if (visibleState.localStorageVisible == true) {
+  if (visibleState.localStorageVisible) {
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       const activeTab = tabs[0];
       chrome.scripting.executeScript({
@@ -165,21 +185,102 @@ showLocalStorageButton.addEventListener("click", async function () {
 });
 
 credentialsButton.addEventListener("click", async function () {
+  await dbReady;
   await toggleDisplay(credentialsButton, visibleState);
   if (visibleState.credentialsVisible) {
-    const credentialsData = await getDataFromDB('credentials');
-    await updateTable('credentials', credentialsData, resultDiv);
-    return true;
-
+  const credentialsData = await getDataFromDB('credentials');
+  await updateTable('credentials', credentialsData, credentialsList);
   }
 });
 
 showFetchesButton.addEventListener("click", async function () {
+  await dbReady;
   await toggleDisplay(showFetchesButton, visibleState);
   if (visibleState.fetchListVisible) {
-    return true;
+    await loadCapturedRequests();
+    chrome.storage.local.get({ captureEnabled: false }, (items) => {
+      captureToggle.checked = !!items.captureEnabled;
+    });
   }
 });
+
+// Capture toggle control: inform background/service worker to enable/disable
+captureToggle.addEventListener('change', () => {
+  const enabled = !!captureToggle.checked;
+  chrome.runtime.sendMessage({ action: 'toggleCapture', enabled }, (resp) => {
+    if (chrome.runtime.lastError) console.warn('toggleCapture send failed', chrome.runtime.lastError);
+    else showSnackbar(enabled ? 'Capture enabled' : 'Capture disabled');
+  });
+});
+
+// Clear captured requests button: wipe stored capturedRequests and clear UI
+clearCapturedButton.addEventListener('click', () => {
+  chrome.storage.local.set({ capturedRequests: [] }, () => {
+    emptyDiv(fetchList);
+    const replayDiv = document.getElementById('replayResult');
+    if (replayDiv) replayDiv.innerHTML = '';
+    showSnackbar('Cleared captured requests');
+  });
+});
+
+generateCredentialsButton.addEventListener("click", async function () {
+  await toggleDisplay(generateCredentialsButton, visibleState);
+});
+
+// Generator button handlers
+generateUsernameButton.addEventListener('click', () => {
+  const username = generateUsername();
+  if (generatedResult) {
+    generatedResult.textContent = username;
+    generatedResult.classList.add('show');
+  }
+});
+
+generatePasswordButton.addEventListener('click', () => {
+  const password = generatePassword();
+  if (generatedResult) {
+    generatedResult.textContent = password;
+    generatedResult.classList.add('show');
+  }
+});
+
+generateEmailButton.addEventListener('click', () => {
+  const email = generateEmail();
+  if (generatedResult) {
+    generatedResult.textContent = email;
+    generatedResult.classList.add('show');
+  }
+});
+
+// Click-to-copy for generated result with snackbar feedback; clear the box after copy
+if (generatedResult) {
+  generatedResult.addEventListener('click', () => {
+    const text = generatedResult.textContent || '';
+    if (!text) return;
+    copyValueToClipboard(text);
+    showSnackbar('Copied');
+    // remove the visible class to trigger CSS transition, then clear when
+    // transition finishes (listen for opacity transition)
+    generatedResult.classList.remove('show');
+    const onTransitionEnd = (e) => {
+      if (e.propertyName === 'opacity') {
+        generatedResult.textContent = '';
+        generatedResult.removeEventListener('transitionend', onTransitionEnd);
+      }
+    };
+    generatedResult.addEventListener('transitionend', onTransitionEnd);
+  });
+}
+
+// global snackbar for small transient messages
+function showSnackbar(text, timeout = 1400) {
+  const bar = document.getElementById('copied');
+  if (!bar) return;
+  bar.textContent = text;
+  bar.classList.add('show');
+  clearTimeout(bar._hideTimer);
+  bar._hideTimer = setTimeout(() => { bar.classList.remove('show'); }, timeout);
+}
 
 chrome.runtime.onMessage.addListener(function (message) {
   if (message.action === "localStorage") {
@@ -192,24 +293,46 @@ chrome.runtime.onMessage.addListener(function (message) {
         const keys = Object.keys(localStorageData);
         const keysList = document.createElement("ul");
         keys.forEach((key) => {
-          const listItem = document.createElement("li");
-          const keyLink = document.createElement("a");
           const displayedKey = key.length > 45 ? key.slice(0, 45) + "..." : key;
-          keyLink.textContent = displayedKey;
-          keyLink.href = "#";
 
-          keyLink.addEventListener("click", function (event) {
+          const listItem = document.createElement("li");
+          listItem.className = 'list-card';
+
+          const itemMain = document.createElement('div');
+          itemMain.className = 'item-main';
+
+          const keyLink = document.createElement('a');
+          keyLink.href = '#';
+          keyLink.textContent = displayedKey;
+
+          // Use a tooltip/title for copy hint, but also show a transient visual badge when copied
+          keyLink.title = 'Click to copy value';
+          keyLink.style.textDecoration = 'none';
+
+          // create a small copied badge and append to the list card later
+          const copiedBadge = document.createElement('div');
+          copiedBadge.className = 'copied-badge';
+          copiedBadge.textContent = 'Copied';
+
+          keyLink.addEventListener('click', function (event) {
             event.preventDefault();
             copyValueToClipboard(localStorageData[key]);
-            keyLink.textContent = "Copied to Clipboard!";
-            keyLink.style.color = "orange";
+            // show badge
+            copiedBadge.classList.add('show');
+            // briefly change anchor color for feedback
+            const prevColor = keyLink.style.color;
+            keyLink.style.color = '';
             setTimeout(() => {
-              keyLink.textContent = displayedKey;
-              keyLink.style.color = "";
-            }, 1500);
+              copiedBadge.classList.remove('show');
+              keyLink.style.color = prevColor;
+              showSnackbar('Copied');
+            }, 1200);
           });
 
-          listItem.appendChild(keyLink);
+          itemMain.appendChild(keyLink);
+          // append badge to the list-card (will be positioned by flex)
+          listItem.appendChild(copiedBadge);
+          listItem.appendChild(itemMain);
           keysList.appendChild(listItem);
         });
         resultDiv.innerHTML = "";
@@ -233,18 +356,223 @@ chrome.runtime.onMessage.addListener((request) => {
     codeButton.textContent = fetchName;
     codeButton.addEventListener("click", () => {
       copyValueToClipboard(fetchCode);
-      codeButton.textContent = "Copied to Clipboard!";
-      codeButton.style.color = "orange";
-      setTimeout(() => {
-        codeButton.textContent = fetchName;
-        codeButton.style.color = "";
-      }, 1500)
+      showSnackbar('Copied fetch code');
     });
 
     newListItem.appendChild(codeButton);
     fetchList.appendChild(newListItem);
   }
+  // new captured request stored by background
+  if (request.action === 'newCapturedRequest' && visibleState.fetchListVisible) {
+    // prepend to UI list
+    const req = request.request;
+    prependCapturedRequestToUI(req);
+  }
+
+  if (request.action === 'replayResult') {
+    const res = request.result;
+    const replayDiv = document.getElementById('replayResult');
+    if (!replayDiv) return;
+    replayDiv.innerHTML = `<div><strong>Replay result for ${res.requestId}</strong>: ${res.status} ${res.statusText}</div><pre style="max-height:200px;overflow:auto">${res.body ? escapeHtml(res.body).slice(0,2000) : (res.error || 'no body')}</pre>`;
+    showSnackbar(`Replay: ${res.status} ${res.statusText}`);
+  }
 });
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function loadCapturedRequests() {
+  emptyDiv(fetchList);
+  const requests = await getCapturedRequests();
+  requests.forEach(r => appendCapturedRequestToUI(r));
+}
+
+function appendCapturedRequestToUI(r) {
+  const newListItem = document.createElement('li');
+  newListItem.classList.add('fetch-item');
+  newListItem.dataset.requestId = r.id;
+
+  const meta = document.createElement('div');
+  meta.className = 'request-meta';
+
+  const methodBadge = document.createElement('div');
+  methodBadge.className = 'request-method';
+  methodBadge.textContent = r.method;
+
+  const urlSpan = document.createElement('div');
+  urlSpan.className = 'request-url';
+  urlSpan.title = r.url;
+  urlSpan.textContent = `${r.url} (${new Date(r.timestamp).toLocaleTimeString()})`;
+
+  meta.appendChild(methodBadge);
+  meta.appendChild(urlSpan);
+
+  const actions = document.createElement('div');
+  actions.className = 'request-actions';
+
+  const replayBtn = document.createElement('button');
+  replayBtn.classList.add('small-btn', 'replay');
+  replayBtn.title = 'Replay request';
+  replayBtn.setAttribute('aria-label','Replay request');
+  const replayIcon = document.createElement('span');
+  replayIcon.className = 'action-icon';
+  replayIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M20 20v-6a7 7 0 00-7-7H7"/></svg>`;
+  replayBtn.appendChild(replayIcon);
+  const replayLabel = document.createElement('span'); replayLabel.textContent = 'Replay'; replayBtn.appendChild(replayLabel);
+  replayBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'replayRequest', request: r });
+  });
+
+  const editBtn = document.createElement('button');
+  editBtn.classList.add('small-btn', 'edit');
+  editBtn.title = 'Edit request';
+  editBtn.setAttribute('aria-label','Edit request');
+  const editIcon = document.createElement('span');
+  editIcon.className = 'action-icon';
+  editIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
+  editBtn.appendChild(editIcon);
+  const editLabel = document.createElement('span'); editLabel.textContent = 'Edit'; editBtn.appendChild(editLabel);
+  editBtn.addEventListener('click', () => openEditBox(r, newListItem));
+
+  const delBtn = document.createElement('button');
+  delBtn.classList.add('small-btn', 'delete');
+  delBtn.title = 'Delete request';
+  delBtn.setAttribute('aria-label','Delete request');
+  const delIcon = document.createElement('span');
+  delIcon.className = 'action-icon';
+  delIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`;
+  delBtn.appendChild(delIcon);
+  const delLabel = document.createElement('span'); delLabel.textContent = 'Delete'; delBtn.appendChild(delLabel);
+  delBtn.addEventListener('click', async () => {
+    await removeCapturedRequest(r.id);
+    newListItem.remove();
+  });
+
+  actions.appendChild(replayBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+
+  newListItem.appendChild(meta);
+  newListItem.appendChild(actions);
+  fetchList.appendChild(newListItem);
+}
+
+function prependCapturedRequestToUI(r) {
+  const newListItem = document.createElement('li');
+  newListItem.classList.add('fetch-item');
+  newListItem.dataset.requestId = r.id;
+
+  const meta = document.createElement('div');
+  meta.className = 'request-meta';
+
+  const methodBadge = document.createElement('div');
+  methodBadge.className = 'request-method';
+  methodBadge.textContent = r.method;
+
+  const urlSpan = document.createElement('div');
+  urlSpan.className = 'request-url';
+  urlSpan.title = r.url;
+  urlSpan.textContent = `${r.url} (${new Date(r.timestamp).toLocaleTimeString()})`;
+
+  meta.appendChild(methodBadge);
+  meta.appendChild(urlSpan);
+
+  const actions = document.createElement('div');
+  actions.className = 'request-actions';
+
+  const replayBtn = document.createElement('button');
+  replayBtn.classList.add('small-btn', 'replay');
+  replayBtn.title = 'Replay request';
+  replayBtn.setAttribute('aria-label','Replay request');
+  const replayIcon = document.createElement('span');
+  replayIcon.className = 'action-icon';
+  replayIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M20 20v-6a7 7 0 00-7-7H7"/></svg>`;
+  replayBtn.appendChild(replayIcon);
+  const replayLabel = document.createElement('span'); replayLabel.textContent = 'Replay'; replayBtn.appendChild(replayLabel);
+  replayBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'replayRequest', request: r });
+  });
+
+  const editBtn = document.createElement('button');
+  editBtn.classList.add('small-btn', 'edit');
+  editBtn.title = 'Edit request';
+  editBtn.setAttribute('aria-label','Edit request');
+  const editIcon = document.createElement('span');
+  editIcon.className = 'action-icon';
+  editIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
+  editBtn.appendChild(editIcon);
+  const editLabel = document.createElement('span'); editLabel.textContent = 'Edit'; editBtn.appendChild(editLabel);
+  editBtn.addEventListener('click', () => openEditBox(r, newListItem));
+
+  const delBtn = document.createElement('button');
+  delBtn.classList.add('small-btn', 'delete');
+  delBtn.title = 'Delete request';
+  delBtn.setAttribute('aria-label','Delete request');
+  const delIcon = document.createElement('span');
+  delIcon.className = 'action-icon';
+  delIcon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`;
+  delBtn.appendChild(delIcon);
+  const delLabel = document.createElement('span'); delLabel.textContent = 'Delete'; delBtn.appendChild(delLabel);
+  delBtn.addEventListener('click', async () => {
+    await removeCapturedRequest(r.id);
+    newListItem.remove();
+  });
+
+  actions.appendChild(replayBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+
+  newListItem.appendChild(meta);
+  newListItem.appendChild(actions);
+  fetchList.insertBefore(newListItem, fetchList.firstChild);
+}
+
+function openEditBox(r, container) {
+  // simple inline editor for body and headers as JSON
+  const editor = document.createElement('div');
+  editor.style.marginTop = '6px';
+  const headersLabel = document.createElement('div');
+  headersLabel.textContent = 'Headers (JSON array or object):';
+  const headersInput = document.createElement('textarea');
+  headersInput.style.width = '100%';
+  headersInput.style.height = '80px';
+  try { headersInput.value = JSON.stringify(r.headers, null, 2); } catch(e){ headersInput.value = '' }
+
+  const bodyLabel = document.createElement('div');
+  bodyLabel.textContent = 'Body (string):';
+  const bodyInput = document.createElement('textarea');
+  bodyInput.style.width = '100%';
+  bodyInput.style.height = '80px';
+  bodyInput.value = r.body || '';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Save';
+  saveBtn.addEventListener('click', async () => {
+    let parsedHeaders = r.headers;
+    try { parsedHeaders = JSON.parse(headersInput.value); } catch(e) { alert('Headers JSON invalid'); return; }
+    const updated = { headers: parsedHeaders, body: bodyInput.value };
+    await updateCapturedRequest(r.id, updated);
+    // update local r and refresh list
+    container.remove();
+    await loadCapturedRequests();
+  });
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.marginLeft = '8px';
+  cancelBtn.addEventListener('click', () => { editor.remove(); });
+
+  editor.appendChild(headersLabel);
+  editor.appendChild(headersInput);
+  editor.appendChild(bodyLabel);
+  editor.appendChild(bodyInput);
+  editor.appendChild(saveBtn);
+  editor.appendChild(cancelBtn);
+
+  container.appendChild(editor);
+}
 
 chrome.action.setPopup({
   popup: "popup.html",
