@@ -3,6 +3,8 @@ const manipulators = [
   "https://www.youtube.com"
 ]
 
+const pendingRequests = new Map();
+
 
 chrome.runtime.onMessage.addListener((request) => {
   console.log(request, "request");
@@ -11,8 +13,6 @@ chrome.runtime.onMessage.addListener((request) => {
   }
 });
 
-// Capture enabled flag is stored in chrome.storage.local under 'captureEnabled'
-// Persist captured requests under 'capturedRequests' as an array.
 async function isCaptureEnabled() {
   return new Promise((resolve) => {
     chrome.storage.local.get({ captureEnabled: false }, (items) => {
@@ -109,20 +109,25 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     (async () => {
       const capture = await isCaptureEnabled();
 
-      const requestDetails = {
-        id: `${details.requestId}-${Date.now()}-${Math.floor(Math.random()*10000)}`,
+      // Merge any earlier information (body) captured in onBeforeRequest
+      const existing = pendingRequests.get(details.requestId) || {};
+      const merged = Object.assign({}, existing, {
+        id: existing.id || `${details.requestId}-${Date.now()}-${Math.floor(Math.random()*10000)}`,
         url: details.url,
         method: details.method,
         requestId: details.requestId,
         headers: details.requestHeaders || [],
         type: details.type,
-        timestamp: Date.now()
-      };
+        timestamp: existing.timestamp || Date.now()
+      });
+
+      // Clean up pending map
+      pendingRequests.delete(details.requestId);
 
       if (capture) {
-        saveCapturedRequest(requestDetails);
+        saveCapturedRequest(merged);
         // notify any open popup listeners about the new captured request
-        chrome.runtime.sendMessage({ action: 'newCapturedRequest', request: requestDetails });
+        chrome.runtime.sendMessage({ action: 'newCapturedRequest', request: merged });
       } else {
         // still notify popup live when contentScriptReady was used previously
         if (contentScriptReady) {
@@ -130,7 +135,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
             action: "addFetchRequest",
             requestName: details.url,
             fetchCode: `fetch('${details.url}', { method: '${details.method}', headers: ${JSON.stringify(details.requestHeaders)} })`,
-            requestDetails
+            requestDetails: merged
           });
         }
       }
@@ -138,4 +143,50 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   },
   { urls: ["<all_urls>"] },
   ["requestHeaders"]
+);
+
+
+// Listen earlier in the pipeline to capture request bodies when available.
+// requestBody is available for POST/PUT/etc when the extension has webRequest permission
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    try {
+      const entry = {
+        requestId: details.requestId,
+        url: details.url,
+        method: details.method,
+        timestamp: Date.now()
+      };
+
+      // details.requestBody may have formData or raw bytes
+      if (details.requestBody) {
+        if (details.requestBody.formData) {
+          entry.body = details.requestBody.formData; // object of arrays
+        } else if (details.requestBody.raw && details.requestBody.raw.length) {
+          // raw is an array of ArrayBuffer-like objects
+          try {
+            const combined = details.requestBody.raw.map(r => {
+              // r.bytes may be a Uint8Array-like
+              if (r.bytes) {
+                return new TextDecoder().decode(r.bytes);
+              }
+              return '';
+            }).join('');
+            entry.body = combined;
+          } catch (e) {
+            // best-effort; if decoding fails, store a placeholder
+            entry.body = null;
+          }
+        }
+      }
+
+      // Store in pending map to merge later with headers from onBeforeSendHeaders
+      pendingRequests.set(details.requestId, entry);
+    } catch (err) {
+      // ignore parse errors — don't let capturing break requests
+      console.warn('onBeforeRequest parsing failed', err);
+    }
+  },
+  { urls: ["<all_urls>"] },
+  ["requestBody"]
 );

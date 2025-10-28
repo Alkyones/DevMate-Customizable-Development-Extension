@@ -1,8 +1,15 @@
+/*
+ * scripts/db.js
+ * Simple IndexedDB wrapper for DevToolsDB plus helpers to share captured requests
+ * between the background service worker and the popup via chrome.storage.local.
+ */
+
 let db;
 let dbReadyResolve;
 const dbReady = new Promise((resolve) => { dbReadyResolve = resolve; });
 
-const request = window.indexedDB.open("DevToolsDB", 3);
+// Open (or create) the database
+const request = indexedDB.open("DevToolsDB", 3);
 
 request.onerror = (event) => {
   console.warn("Database open failed. Some features may not work.");
@@ -18,7 +25,7 @@ request.onsuccess = (event) => {
 request.onupgradeneeded = (event) => {
   db = event.target.result;
   console.log("Object Store creation");
-  // Create an objectStore for this database
+  // Create object stores if missing
   if (!db.objectStoreNames.contains("usefulLinks")) {
     db.createObjectStore("usefulLinks", { keyPath: 'key' });
   }
@@ -27,6 +34,12 @@ request.onupgradeneeded = (event) => {
   }
 };
 
+// --- Helpers ---------------------------------------------------------------
+/**
+ * Convert an IDBRequest into a Promise that resolves with req.result
+ * @param {IDBRequest} req
+ * @returns {Promise<any>}
+ */
 function promisifyRequest(req) {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
@@ -34,12 +47,18 @@ function promisifyRequest(req) {
   });
 }
 
+// --- IndexedDB operations -------------------------------------------------
+/**
+ * Add or update a useful link entry
+ * @param {string} key
+ * @param {string} value
+ * @returns {Promise<boolean>}
+ */
 export async function addLink(key, value) {
   if (!db) return false;
   try {
     const tx = db.transaction("usefulLinks", "readwrite");
     const store = tx.objectStore("usefulLinks");
-    console.log('Adding link', key, value);
     const req = store.put({ key: key, value: value });
     await promisifyRequest(req);
     return true;
@@ -49,6 +68,13 @@ export async function addLink(key, value) {
   }
 }
 
+/**
+ * Add or update a credential entry
+ * @param {string} website
+ * @param {string} key
+ * @param {string} value
+ * @returns {Promise<boolean>}
+ */
 export async function addCredential(website, key, value) {
   if (!db) return false;
   try {
@@ -63,6 +89,11 @@ export async function addCredential(website, key, value) {
   }
 }
 
+/**
+ * Read all records from an object store
+ * @param {string} collection
+ * @returns {Promise<array|null>}
+ */
 export async function getDataFromDB(collection) {
   if (!db) return null;
   try {
@@ -77,11 +108,17 @@ export async function getDataFromDB(collection) {
   }
 }
 
-export async function removeLink(action, key) {
+/**
+ * Remove an entry by key from the specified object store
+ * @param {string} storeName
+ * @param {string} key
+ * @returns {Promise<boolean>}
+ */
+export async function removeLink(storeName, key) {
   if (!db) return false;
   try {
-    const tx = db.transaction(action, 'readwrite');
-    const store = tx.objectStore(action);
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
     const req = store.delete(key);
     await promisifyRequest(req);
     return true;
@@ -91,7 +128,15 @@ export async function removeLink(action, key) {
   }
 }
 
-// Captured requests helpers using chrome.storage.local for popup/service worker communication
+// --- Captured requests helpers (chrome.storage.local) --------------------
+// These helpers are used by the popup and the background/service worker to
+// exchange captured network requests.
+
+/**
+ * Add a captured request to chrome.storage.local (keeps newest first)
+ * @param {object} requestObj
+ * @returns {Promise<boolean>}
+ */
 export async function addCapturedRequest(requestObj) {
   return new Promise((resolve) => {
     chrome.storage.local.get({ capturedRequests: [] }, (items) => {
@@ -103,6 +148,10 @@ export async function addCapturedRequest(requestObj) {
   });
 }
 
+/**
+ * Return the list of captured requests
+ * @returns {Promise<Array>}
+ */
 export async function getCapturedRequests() {
   return new Promise((resolve) => {
     chrome.storage.local.get({ capturedRequests: [] }, (items) => {
@@ -111,6 +160,11 @@ export async function getCapturedRequests() {
   });
 }
 
+/**
+ * Remove a captured request by id
+ * @param {string} id
+ * @returns {Promise<boolean>}
+ */
 export async function removeCapturedRequest(id) {
   return new Promise((resolve) => {
     chrome.storage.local.get({ capturedRequests: [] }, (items) => {
@@ -120,6 +174,12 @@ export async function removeCapturedRequest(id) {
   });
 }
 
+/**
+ * Update an existing captured request by id
+ * @param {string} id
+ * @param {object} newObj
+ * @returns {Promise<boolean>}
+ */
 export async function updateCapturedRequest(id, newObj) {
   return new Promise((resolve) => {
     chrome.storage.local.get({ capturedRequests: [] }, (items) => {
