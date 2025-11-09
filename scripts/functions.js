@@ -106,6 +106,7 @@ async function updateTable(action, data, resultDiv) {
   const listItems = createListItems(data, action);
   resultDiv.innerHTML = listItems.join('');
 
+  // wire remove buttons
   const removeButtons = resultDiv.querySelectorAll('.remove-button');
   removeButtons.forEach((button) => {
     button.addEventListener('click', async () => {
@@ -120,6 +121,8 @@ async function updateTable(action, data, resultDiv) {
       }
     });
   });
+
+  
 }
 
 // --- small generators -----------------------------------------------------

@@ -192,3 +192,71 @@ export async function updateCapturedRequest(id, newObj) {
 }
 
 export { dbReady };
+
+// --- Code Keeper helpers (chrome.storage.local) -------------------------
+/**
+ * Add a code snippet to chrome.storage.local (keeps newest first)
+ * @param {{id?:string,title:string,code:string,createdAt?:number,updatedAt?:number}} snippet
+ * @returns {Promise<boolean>}
+ */
+export async function addSnippet(snippet) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ codeKeeper: [] }, (items) => {
+      const arr = items.codeKeeper || [];
+      const now = Date.now();
+      const id = snippet.id || (`s_${now}_${Math.random().toString(36).slice(2,8)}`);
+      const obj = Object.assign({ id, createdAt: now, updatedAt: now }, snippet);
+      // If id exists, replace the existing entry
+      const existingIdx = arr.findIndex(s => s.id === id);
+      if (existingIdx !== -1) arr[existingIdx] = Object.assign({}, arr[existingIdx], obj);
+      else arr.unshift(obj);
+      const capped = arr.slice(0, 1000);
+      chrome.storage.local.set({ codeKeeper: capped }, () => resolve(true));
+    });
+  });
+}
+
+/**
+ * Return the list of saved code snippets
+ * @returns {Promise<Array>}
+ */
+export async function getSnippets() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ codeKeeper: [] }, (items) => {
+      resolve(items.codeKeeper || []);
+    });
+  });
+}
+
+/**
+ * Remove a saved snippet by id
+ * @param {string} id
+ * @returns {Promise<boolean>}
+ */
+export async function removeSnippet(id) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ codeKeeper: [] }, (items) => {
+      const arr = (items.codeKeeper || []).filter(s => s.id !== id);
+      chrome.storage.local.set({ codeKeeper: arr }, () => resolve(true));
+    });
+  });
+}
+
+/**
+ * Update an existing snippet by id
+ * @param {string} id
+ * @param {{title?:string,code?:string}} newObj
+ * @returns {Promise<boolean>}
+ */
+export async function updateSnippet(id, newObj) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ codeKeeper: [] }, (items) => {
+      const arr = items.codeKeeper || [];
+      const idx = arr.findIndex(s => s.id === id);
+      if (idx !== -1) {
+        arr[idx] = Object.assign({}, arr[idx], newObj, { updatedAt: Date.now() });
+      }
+      chrome.storage.local.set({ codeKeeper: arr }, () => resolve(true));
+    });
+  });
+}

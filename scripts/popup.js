@@ -1,5 +1,5 @@
 import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable, generateUsername, generatePassword, generateEmail } from './functions.js';
-import { addLink, addCredential, getDataFromDB, addCapturedRequest, getCapturedRequests, removeCapturedRequest, updateCapturedRequest, dbReady } from './db.js';
+import { addLink, addCredential, getDataFromDB, addCapturedRequest, getCapturedRequests, removeCapturedRequest, updateCapturedRequest, dbReady, addSnippet, getSnippets, removeSnippet, updateSnippet } from './db.js';
 
 // DOM refs
 const resultDiv = document.getElementById('result');
@@ -29,6 +29,16 @@ const generateUsernameButton = document.getElementById('generateUsernameButton')
 const generatePasswordButton = document.getElementById('generatePasswordButton');
 const generateEmailButton = document.getElementById('generateEmailButton');
 const generatedResult = document.getElementById('generatedResult');
+const codeKeeperButton = document.getElementById('codeKeeperButton');
+const codeKeeperDiv = document.getElementById('code-keeper');
+const codeTitleInput = document.getElementById('codeTitleInput');
+const codeTextarea = document.getElementById('codeTextarea');
+const saveSnippetButton = document.getElementById('saveSnippetButton');
+const codeSnippetList = document.getElementById('codeSnippetList');
+const snippetStatus = document.getElementById('snippetStatus');
+const sideMenuToggle = document.getElementById('sideMenuToggle');
+const sideMenu = document.getElementById('sideMenu');
+const popupContent = document.getElementById('popup-content');
 
 // visible state for panels
 const visibleState = {
@@ -37,14 +47,37 @@ const visibleState = {
   credentialsVisible: false,
   fetchListVisible: false,
   generateCredentialsVisible: false,
+  codeKeeperVisible: false,
 };
 
 // Helper: set button label without removing icon nodes
 function setButtonLabel(button, text) {
   if (!button) return;
   const lbl = button.querySelector('.btn-label');
-  if (lbl) lbl.textContent = text;
-  else button.textContent = text;
+  if (lbl) {
+    lbl.textContent = text;
+    // keep tooltip in sync with label (cleaned)
+    const cleaned = cleanTooltipLabel(text);
+    button.dataset.tooltip = cleaned;
+  } else {
+    button.textContent = text;
+    button.dataset.tooltip = cleanTooltipLabel(text);
+  }
+}
+
+function cleanTooltipLabel(raw) {
+  if (!raw) return '';
+  // remove common leading verbs/words like 'Show', 'Hide', 'Check', 'Hide Code', etc.
+  // Also remove leading punctuation and ellipses
+  let s = String(raw).trim();
+  // remove trailing ellipsis and collapse spaces
+  s = s.replace(/\.{2,}$/g, '').trim();
+  s = s.replace(/^(Show|Hide|Check|Hide\s+Code|Add)\s+/i, '');
+  // If it starts with 'Hide ' remove it
+  s = s.replace(/^Hide\s+/i, '');
+  // remove leading 'Show Fetch' -> 'Fetch'
+  s = s.replace(/^Show\s+/i, '');
+  return s.trim();
 }
 
 // Panel mapping for toggles
@@ -54,7 +87,44 @@ const panelMap = new Map([
   [credentialsButton, { key: 'credentialsVisible', element: credentialsDiv }],
   [showFetchesButton, { key: 'fetchListVisible', element: fetchListDiv }],
   [generateCredentialsButton, { key: 'generateCredentialsVisible', element: generateCredentialsDiv }],
+  [codeKeeperButton, { key: 'codeKeeperVisible', element: codeKeeperDiv }],
 ]);
+
+// Side menu toggle: collapse/expand the left menu
+// initialize side menu button tooltips (data-tooltip) from label text
+if (sideMenu) {
+  const menuButtons = sideMenu.querySelectorAll('.button-container > button');
+  menuButtons.forEach(btn => {
+    const lbl = btn.querySelector('.btn-label');
+    if (lbl) btn.dataset.tooltip = cleanTooltipLabel(lbl.textContent.trim());
+  });
+  // accessibility: set aria-label from tooltip or visible label so screen readers have a name
+  menuButtons.forEach(btn => {
+    const tooltip = btn.dataset.tooltip || (btn.querySelector('.btn-label') && btn.querySelector('.btn-label').textContent.trim());
+    if (tooltip) btn.setAttribute('aria-label', tooltip);
+  });
+}
+
+// restore collapsed state from storage
+// Force start expanded (do not automatically restore hidden state on load)
+// but persist future toggles. This ensures popup opens expanded each time.
+try {
+  document.body.classList.remove('side-collapsed');
+  if (sideMenuToggle) sideMenuToggle.title = 'Hide';
+  // set storage to false so previous hidden state doesn't persist
+  chrome.storage && chrome.storage.local && chrome.storage.local.set({ sideCollapsed: false });
+} catch (e) { /* ignore */ }
+
+sideMenuToggle?.addEventListener('click', () => {
+  const collapsed = document.body.classList.toggle('side-collapsed');
+  sideMenuToggle.title = collapsed ? 'Expand' : 'Hide';
+  // persist state
+  try {
+    chrome.storage.local.set({ sideCollapsed: collapsed });
+  } catch (e) {
+    // fall back silently if storage not available
+  }
+});
 
 // Toggle display: hide others and toggle the requested panel
 async function toggleDisplay(button) {
@@ -78,6 +148,7 @@ async function toggleDisplay(button) {
   setButtonLabel(credentialsButton, visibleState.credentialsVisible ? 'Hide Credentials' : 'Show Credentials');
   setButtonLabel(showFetchesButton, visibleState.fetchListVisible ? 'Hide Fetch Requests' : 'Show Fetch Requests');
   setButtonLabel(generateCredentialsButton, visibleState.generateCredentialsVisible ? 'Hide Credential Generator' : 'Show Credential Generator');
+  setButtonLabel(codeKeeperButton, visibleState.codeKeeperVisible ? 'Hide Code Keeper' : 'Code Keeper');
 }
 
 // Snackbar for small transient messages
@@ -186,6 +257,62 @@ showFetchesButton?.addEventListener('click', async () => {
   if (visibleState.fetchListVisible) {
     await loadCapturedRequests();
     chrome.storage.local.get({ captureEnabled: false }, (items) => { captureToggle.checked = !!items.captureEnabled; });
+  }
+});
+
+// ----------- Code Keeper handlers -----------
+let _editingSnippetId = null;
+
+function renderSnippetItem(s) {
+  const item = document.createElement('li');
+  item.className = 'list-card';
+  item.dataset.id = s.id;
+  const main = document.createElement('div'); main.className = 'item-main';
+  const title = document.createElement('div'); title.style.fontWeight = '700'; title.style.fontSize = '13px'; title.textContent = s.title || '(untitled)';
+  const meta = document.createElement('div'); meta.className = 'item-meta'; meta.textContent = s.updatedAt ? new Date(s.updatedAt).toLocaleString() : '';
+  const actions = document.createElement('div'); actions.className = 'actions-inline';
+
+  const copyBtn = createActionButton({ classes: ['replay'], title: 'Copy code', label: 'Copy', html: '', onClick: () => { copyValueToClipboard(s.code); showSnackbar('Copied'); } });
+  const editBtn = createActionButton({ classes: ['edit'], title: 'Edit snippet', label: 'Edit', html: '', onClick: () => { _editingSnippetId = s.id; codeTitleInput.value = s.title || ''; codeTextarea.value = s.code || ''; snippetStatus.textContent = 'Editing...'; } });
+  const delBtn = createActionButton({ classes: ['delete'], title: 'Delete snippet', label: 'Delete', html: '', onClick: async () => { await removeSnippet(s.id); await loadSnippets(); showSnackbar('Deleted'); } });
+
+  actions.appendChild(copyBtn); actions.appendChild(editBtn); actions.appendChild(delBtn);
+  main.appendChild(title); main.appendChild(meta);
+  item.appendChild(main); item.appendChild(actions);
+  return item;
+}
+
+async function loadSnippets() {
+  emptyDiv(codeSnippetList);
+  const items = await getSnippets();
+  (items || []).forEach(s => codeSnippetList.appendChild(renderSnippetItem(s)));
+}
+
+saveSnippetButton?.addEventListener('click', async () => {
+  await dbReady;
+  const title = (codeTitleInput?.value || '').trim();
+  const code = (codeTextarea?.value || '').trim();
+  if (!code) { alert('Please enter some code'); return; }
+  const payload = { title: title || (code.slice(0, 64) + (code.length > 64 ? '...' : '')), code };
+  if (_editingSnippetId) {
+    await updateSnippet(_editingSnippetId, { title: payload.title, code: payload.code });
+    snippetStatus.textContent = 'Saved (updated)';
+    _editingSnippetId = null;
+  } else {
+    await addSnippet(payload);
+    snippetStatus.textContent = 'Saved';
+  }
+  codeTitleInput.value = '';
+  codeTextarea.value = '';
+  setTimeout(() => { snippetStatus.textContent = ''; }, 1200);
+  await loadSnippets();
+});
+
+codeKeeperButton?.addEventListener('click', async () => {
+  await dbReady;
+  await toggleDisplay(codeKeeperButton);
+  if (visibleState.codeKeeperVisible) {
+    await loadSnippets();
   }
 });
 
