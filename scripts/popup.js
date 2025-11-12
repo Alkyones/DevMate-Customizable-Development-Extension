@@ -274,7 +274,7 @@ function renderSnippetItem(s) {
 
   const copyBtn = createActionButton({ classes: ['replay'], title: 'Copy code', label: 'Copy', html: '', onClick: () => { copyValueToClipboard(s.code); showSnackbar('Copied'); } });
   const editBtn = createActionButton({ classes: ['edit'], title: 'Edit snippet', label: 'Edit', html: '', onClick: () => { _editingSnippetId = s.id; codeTitleInput.value = s.title || ''; codeTextarea.value = s.code || ''; snippetStatus.textContent = 'Editing...'; } });
-  const delBtn = createActionButton({ classes: ['delete'], title: 'Delete snippet', label: 'Delete', html: '', onClick: async () => { await removeSnippet(s.id); await loadSnippets(); showSnackbar('Deleted'); } });
+  const delBtn = createActionButton({ classes: ['delete'], title: 'Delete snippet', label: 'Delete', html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`, onClick: async () => { await removeSnippet(s.id); await loadSnippets(); showSnackbar('Deleted'); } });
 
   actions.appendChild(copyBtn); actions.appendChild(editBtn); actions.appendChild(delBtn);
   main.appendChild(title); main.appendChild(meta);

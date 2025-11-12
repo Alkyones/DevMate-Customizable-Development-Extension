@@ -43,26 +43,44 @@
 
     <main class="main-content">
   <div id="links" class= 'input-container' hidden>
-    <input type="text" placeholder="Enter link name" id="linkKeyInput">
-    <input type="text" placeholder="Enter link" id="linkValueInput">
-    <button id="saveLinkButton">Add Link</button>
-    <button id="saveCurrentLinkButton">Add Current Link</button>
+    <div class="input-row">
+      <input type="text" placeholder="Enter link name" id="linkKeyInput">
+      <input type="text" placeholder="Enter link" id="linkValueInput">
+      <button id="saveLinkButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L9.93 6.93"/><path d="M14 10a5 5 0 00-7.07 0L5.52 11.41a5 5 0 007.07 7.07L14 16.07"/></svg>
+        </span>Add Link</button>
+      <button id="saveCurrentLinkButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        </span>Add Current Link</button>
+    </div>
     <ul id="usefulLinks"></ul>
   </div>
   <div id="credentials" class= 'input-container' hidden>
-    <input type="text" placeholder="Enter website" id="credentialsWebsiteInput">
-    <input type="text" placeholder="Enter username" id="credentialsKeyInput">
-    <input type="text" placeholder="Enter password" id="credentialsValueInput">
-    <button id="saveCredentialButton">Save Value</button>
+    <div class="input-row">
+      <input type="text" placeholder="Enter website" id="credentialsWebsiteInput">
+      <input type="text" placeholder="Enter username" id="credentialsKeyInput">
+      <input type="text" placeholder="Enter password" id="credentialsValueInput">
+      <button id="saveCredentialButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>Save Value</button>
+    </div>
     <ul id="credentialsList"></ul>
   </div>
   <!-- Credential generator is a separate sibling panel so it does not get
        unexpectedly shown when other panels are toggled. It is placed after
        credentials so it appears visually below the credentials inputs. -->
   <div id="generate-credentials" class= 'input-container' hidden>
-    <button id="generateUsernameButton">Generate Username</button>
-    <button id="generatePasswordButton">Generate Password</button>
-    <button id="generateEmailButton">Generate Email</button>
+      <div class="input-row">
+      <button id="generateUsernameButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>Generate Username</button>
+      <button id="generatePasswordButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-7 7"/><circle cx="7" cy="14" r="3"/><path d="M10 14h11"/></svg>
+        </span>Generate Password</button>
+      <button id="generateEmailButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9 6 9-6"/><path d="M21 19H3V5h18z"/></svg>
+        </span>Generate Email</button>
+    </div>
     <div id="generatedResult"></div>
   </div>
   <div id="code-keeper" class="input-container" hidden>
@@ -70,8 +88,10 @@
     <div style="margin-top:8px;">
       <textarea id="codeTextarea" placeholder="Paste code here" style="width:100%;height:160px;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;resize:vertical"></textarea>
     </div>
-    <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-      <button id="saveSnippetButton">Save Snippet</button>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+      <button id="saveSnippetButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
+        </span>Save Snippet</button>
       <div id="snippetStatus" style="color:var(--muted);font-size:12px"></div>
     </div>
     <ul id="codeSnippetList"></ul>
@@ -79,7 +99,9 @@
   <div id="fetch-requests" hidden>
     <div class="capture-controls">
       <label><input type="checkbox" id="captureToggle"> Capture requests</label>
-      <button id="clearCapturedButton">Clear Captured</button>
+      <button id="clearCapturedButton"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6v12"/><path d="M16 6v12"/><path d="M10 2h4l1 4H9z"/></svg>
+        </span>Clear Captured</button>
     </div>
     <ul id="fetchRequestList"></ul>
     <div id="replayResult" style="margin-top:8px;"></div>

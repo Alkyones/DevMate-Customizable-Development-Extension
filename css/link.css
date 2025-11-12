@@ -68,7 +68,6 @@ body{
 .top-header .devmate-title{ margin:0; font-size:18px; color:var(--accent); text-align:center; }
 
 /* Collapsed state: narrow side menu showing only icons */
-.side-collapsed .btn-label{ display:none }
 .side-collapsed .devmate-title{ display:block }
 
 /* Hidden state: hide entire side menu so main content uses full width
@@ -98,7 +97,6 @@ body.side-collapsed .popup-layout{ gap:0 }
 .side-menu{ transition: width 220ms ease; }
 .side-menu .button-container > button{ transition: background 160ms ease, transform 160ms ease; }
 .btn-label{ display:none; /* hide label text from buttons; tooltips will provide names */ }
-.side-collapsed .btn-label{ display:none }
 
 /* Hover tooltip when collapsed */
 .side-menu .button-container > button{ position: relative }
@@ -223,6 +221,33 @@ body.side-collapsed .side-menu .button-container > button:focus::before{
 .input-container{ margin-bottom: 20px; }
 .input-container ul{ margin-top: 12px; }
 
+/* Ensure input rows keep inputs and buttons on the same line.
+   Use a flexible row layout: inputs grow, buttons stay fixed size. */
+.input-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:nowrap; /* prevent wrapping to next row */
+}
+.input-row input[type="text"], .input-row input[type="password"],
+.input-container input::placeholder,
+.input-row input::placeholder,
+.input-container textarea::placeholder{
+  /* visible placeholders */
+  color: rgba(233,238,241,0.55);
+}
+.input-row input[type="text"], .input-row input[type="password"]{
+  flex:1 1 auto;
+  min-width:0; /* allow shrinking inside flex container */
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color:var(--text);
+}
+.input-row button{ flex:0 0 auto; }
+
+
 /* Generic input styling is defined below (keep a single canonical definition) */
 
 /* Code Keeper specific tweaks */
@@ -251,8 +276,8 @@ li{ margin-bottom:8px }
 .list-card .item-meta{ color:var(--muted); font-size:12px; margin-top:4px }
 
 .actions-inline{ display:flex; gap:8px; align-items:center }
-.remove-button{ width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; color:#ffb3ad; border-radius:8px; background:transparent; border:1px solid rgba(255,255,255,0.04); cursor:pointer }
-.remove-button:after{ content:'✕'; font-size:14px }
+/* Remove / delete button (smaller, compact cross icon) */
+/* remove-button no longer needs bespoke styling - rely on .small-btn.delete for visuals */
 
 /* fetch list */
 #fetchRequestList li.fetch-item{ display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; padding:10px 12px; background: rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.03) }
@@ -290,8 +315,62 @@ li{ margin-bottom:8px }
 .capture-controls{ display:flex; gap:10px; align-items:center; margin-bottom:8px }
 .capture-controls label{ display:flex; align-items:center; gap:8px; color:var(--text); font-size:14px }
 #captureToggle{ width:18px; height:18px; accent-color: var(--accent); cursor:pointer; border-radius:4px }
-#clearCapturedButton{ padding:7px 12px; border-radius:8px; border:none; background: var(--accent); color:var(--accent-contrast); cursor:pointer; font-weight:700; box-shadow: 0 6px 14px rgba(59,130,246,0.18) }
+/* Clear captured button: make it smaller and inline to avoid dominating the UI */
+#clearCapturedButton{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  height:36px;
+  border-radius:10px;
+  border:none;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 80%, black 20%));
+  color:var(--accent-contrast);
+  cursor:pointer;
+  font-weight:700;
+  box-shadow: 0 6px 14px rgba(59,130,246,0.14);
+}
 #clearCapturedButton:hover{ background: color-mix(in srgb, var(--accent) 85%, black 15%); transform: translateY(-1px) }
+
+.input-container button{ /* Make simple panel buttons match the shared small-btn appearance */
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 14px;
+  height:36px;
+  min-width:88px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+  border:none;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.12);
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 80%, black 20%));
+  color: var(--accent-contrast);
+}
+.input-container button:hover{ transform: translateY(-2px); }
+.input-container button:active{ transform: translateY(1px) }
+.input-container button:focus{ outline: 3px solid rgba(59,130,246,0.12); outline-offset:2px }
+
+/* Style the lists in links/credentials to use the same list-card visual
+   so entries look consistent with other panels */
+#usefulLinks li,
+#credentialsList li{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:10px;
+  background: linear-gradient(180deg, rgba(59,130,246,0.03), rgba(59,130,246,0.02));
+  border: 1px solid rgba(59,130,246,0.06);
+  box-shadow: 0 6px 16px rgba(2,6,8,0.28);
+  margin-top:8px;
+}
+#usefulLinks li .meta,
+#credentialsList li .meta{ color:var(--muted); font-size:12px }
+
 
 /* Unstructured request lines (when capture is disabled) */
 #fetchRequestList{ margin-top:8px }
