@@ -96,57 +96,50 @@ body.side-collapsed .popup-layout{ gap:0 }
 /* smooth transitions */
 .side-menu{ transition: width 220ms ease; }
 .side-menu .button-container > button{ transition: background 160ms ease, transform 160ms ease; }
-.btn-label{ display:none; /* hide label text from buttons; tooltips will provide names */ }
+.btn-label{ display: none !important; }
 
-/* Hover tooltip when collapsed */
-.side-menu .button-container > button{ position: relative }
-.side-collapsed .side-menu .button-container > button::after,
-body.side-collapsed .side-menu .button-container > button::after{
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 64px;
-  top: 50%;
-  transform: translateY(-50%) translateX(-6px);
-  background: rgba(0,0,0,0.85);
-  color: var(--text);
-  padding: 6px 10px;
-  border-radius: 6px;
-  white-space: nowrap;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-  font-size: 13px;
-  z-index: 9999;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-
-/* small arrow for tooltip */
-.side-collapsed .side-menu .button-container > button::before,
-body.side-collapsed .side-menu .button-container > button::before{
-  content: '';
-  position: absolute;
-  left: 56px;
-  top: 50%;
-  transform: translateY(-50%) translateX(-6px);
-  width: 0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-right:6px solid rgba(0,0,0,0.85);
-  z-index: 9999;
-  opacity: 0;
-  transition: opacity 160ms ease, transform 160ms ease;
-}
-
-.side-collapsed .side-menu .button-container > button:hover::after,
-body.side-collapsed .side-menu .button-container > button:hover::after,
-.side-collapsed .side-menu .button-container > button:focus::after,
-body.side-collapsed .side-menu .button-container > button:focus::after{
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
-}
-.side-collapsed .side-menu .button-container > button:hover::before,
-body.side-collapsed .side-menu .button-container > button:hover::before,
-.side-collapsed .side-menu .button-container > button:focus::before,
-body.side-collapsed .side-menu .button-container > button:focus::before{
-  opacity: 1;
-  transform: translateY(-50%) translateX(0);
+/* show hover-only tooltip for side-menu buttons on hover-capable devices */
+.side-menu .button-container > button{ position: relative; }
+@media (hover: hover) {
+  .side-menu .button-container > button::after{
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 64px;
+    top: 50%;
+    transform: translateY(-50%) translateX(-6px);
+    background: rgba(0,0,0,0.85);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    font-size: 13px;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+  .side-menu .button-container > button::before{
+    content: '';
+    position: absolute;
+    left: 56px;
+    top: 50%;
+    transform: translateY(-50%) translateX(-6px);
+    width: 0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-right:6px solid rgba(0,0,0,0.85);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+  .side-menu .button-container > button:hover::after,
+  .side-menu .button-container > button:focus::after{
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  .side-menu .button-container > button:hover::before,
+  .side-menu .button-container > button:focus::before{
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
 }
 
 
