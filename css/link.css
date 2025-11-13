@@ -52,14 +52,43 @@ body{
   flex-direction:column;
   gap:8px;
   position: relative; /* allow absolute positioning of the toggle */
-  overflow: hidden; /* contain animated collapsing children */
+  overflow: visible; /* allow tooltips to escape the side menu */
   transition: width 260ms cubic-bezier(.2,.9,.2,1), padding 200ms ease;
 }
-.side-menu .button-container{ flex-direction:column; gap:6px; align-items: flex-start; padding-top:10px; padding-left:6px }
+.side-menu .button-container{ flex-direction:column; gap:6px; align-items: flex-start; padding-top:36px; padding-left:6px }
 .side-menu .button-container > button{ min-height:64px; padding:8px 12px; align-items:center; flex-direction:row; gap:10px; width:auto }
 .side-menu .button-container .btn-icon{ width:44px; height:44px; max-width:none; border-radius:8px }
 .side-menu .button-container .btn-label{ text-align:left; white-space:normal; font-size:13px }
-.side-toggle{ background:transparent; color:var(--text); border:none; cursor:pointer; padding:6px 8px; font-size:18px; position:absolute; left:8px; top:50%; transform: translateY(-50%); z-index:9999 }
+.side-toggle{
+  /* Floating toggle visible by default */
+  position: absolute;
+  left: 16px;
+  top: 8px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 85%, black 15%));
+  color: var(--accent-contrast);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(59,130,246,0.22), 0 2px 6px rgba(0,0,0,0.6) inset;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  z-index: 120000;
+}
+.side-toggle:hover{ transform: translateY(-4px) scale(1.06); box-shadow: 0 18px 40px rgba(59,130,246,0.28); }
+.side-toggle:active{ transform: translateY(0) scale(0.98); }
+.side-toggle:focus-visible{ outline: 3px solid rgba(255,255,255,0.08); outline-offset:3px; }
+
+/* rotate the hamburger when side menu is collapsed to indicate expand */
+body.side-collapsed .side-toggle .hamburger-icon{ transform: rotate(180deg); transition: transform 220ms ease; }
+/* ensure the hamburger lines are visible (white) */
+.side-toggle .hamburger-icon{ color: var(--accent-contrast); stroke: currentColor; }
 .main-content{ flex:1; padding:18px 18px 18px 8px; overflow-y:auto; }
 
 /* Top header (title + toggle) centered at the very top of the popup */
@@ -80,6 +109,7 @@ body.side-collapsed .side-menu{
   width: 0 !important;
   min-width: 0 !important;
   padding: 0 !important;
+  overflow: hidden; /* keep collapsed content clipped */
 }
 
 /* animate the button container content away when collapsed */
@@ -114,7 +144,7 @@ body.side-collapsed .popup-layout{ gap:0 }
     white-space: nowrap;
     box-shadow: 0 6px 20px rgba(0,0,0,0.6);
     font-size: 13px;
-    z-index: 9999;
+  z-index: 99999;
     opacity: 0;
     pointer-events: none;
     transition: opacity 160ms ease, transform 160ms ease;
@@ -126,7 +156,7 @@ body.side-collapsed .popup-layout{ gap:0 }
     top: 50%;
     transform: translateY(-50%) translateX(-6px);
     width: 0; height:0; border-top:6px solid transparent; border-bottom:6px solid transparent; border-right:6px solid rgba(0,0,0,0.85);
-    z-index: 9999;
+  z-index: 99999;
     opacity: 0;
     transition: opacity 160ms ease, transform 160ms ease;
   }
