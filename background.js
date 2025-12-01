@@ -64,10 +64,44 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           credentials: 'include'
         };
 
+        let bodyForDebug = null;
         if (request.body) {
-          // if body looks like an object, leave as-is; otherwise string
-          fetchOpts.body = request.body;
+          // Handle different body types
+          if (typeof request.body === 'object' && request.body !== null) {
+            // If body is formData object with key-value pairs
+            if (Object.keys(request.body).length > 0 && !Array.isArray(request.body)) {
+              const formData = new FormData();
+              for (const [key, value] of Object.entries(request.body)) {
+                if (Array.isArray(value)) {
+                  value.forEach(v => formData.append(key, v));
+                } else {
+                  formData.append(key, value);
+                }
+              }
+              fetchOpts.body = formData;
+              bodyForDebug = `FormData: ${JSON.stringify(request.body)}`;
+            } else {
+              // Try to stringify as JSON
+              fetchOpts.body = JSON.stringify(request.body);
+              bodyForDebug = fetchOpts.body;
+              if (!headersInit['Content-Type'] && !headersInit['content-type']) {
+                fetchOpts.headers['Content-Type'] = 'application/json';
+              }
+            }
+          } else {
+            // Body is already a string
+            fetchOpts.body = request.body;
+            bodyForDebug = request.body;
+          }
         }
+
+        // Store request info for debugging
+        result.requestInfo = {
+          method: fetchOpts.method,
+          url: request.url,
+          headers: headersInit,
+          body: bodyForDebug
+        };
 
         const resp = await fetch(request.url, fetchOpts);
         result.status = resp.status;

@@ -1,5 +1,11 @@
 import { getDataFromDB, removeLink } from './db.js';
 
+// Constants for action types
+const ACTION_TYPES = {
+  USEFUL_LINKS: 'usefulLinks',
+  CREDENTIALS: 'credentials'
+};
+
 /**
  * Send localStorage snapshot to the background (if any)
  */
@@ -52,39 +58,71 @@ async function copyValueToClipboard(value) {
 }
 
 /**
- * Build list items HTML for either usefulLinks or credentials
- * @param {Array<object>} data
+ * Create a single list item element safely using DOM API
+ * @param {object} item - Data item with key and value/website
  * @param {string} action - 'usefulLinks' or 'credentials'
- * @returns {Array<string>} array of <li> HTML strings
+ * @returns {HTMLLIElement}
  */
-function createListItems(data, action) {
-  if (!Array.isArray(data)) return [];
-  return data.map((item) => {
-    const key = item.key || '';
-    const isUseful = action === 'usefulLinks';
-    const rawUrl = isUseful ? (item.value || '') : (item.website || '');
-    // make a safe href: if empty use '#' otherwise ensure protocol
-    let href = '#';
-    if (rawUrl) {
-      href = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
-    }
-    const meta = isUseful ? (item.value || '') : (item.website || '');
-    const dataValue = isUseful ? (item.value || '') : (item.website || '');
+function createListItemElement(item, action) {
+  const key = item.key || '';
+  const isUseful = action === ACTION_TYPES.USEFUL_LINKS;
+  const rawUrl = isUseful ? (item.value || '') : (item.website || '');
+  
+  // Make a safe href: if empty use '#' otherwise ensure protocol
+  let href = '#';
+  if (rawUrl) {
+    href = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+  }
+  const meta = isUseful ? (item.value || '') : (item.website || '');
+  const dataValue = isUseful ? (item.value || '') : (item.website || '');
 
-    return `
-      <li class="list-card" data-key="${escapeHtml(key)}">
-        <div class="item-main">
-          <a href="${escapeHtml(href)}" target="_blank" rel="noreferrer" data-value="${escapeHtml(dataValue)}">${escapeHtml(key)}</a>
-          <div class="item-meta">${escapeHtml(meta)}</div>
-        </div>
-        <div class="actions-inline">
-          <button class="small-btn delete remove-button" data-action="${escapeHtml(action)}" data-key="${escapeHtml(key)}" title="Remove" aria-label="Remove">
-            <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></span>
-            <span>Remove</span>
-          </button>
-        </div>
-      </li>`;
-  });
+  // Create elements safely
+  const li = document.createElement('li');
+  li.className = 'list-card';
+  li.dataset.key = key;
+
+  const itemMain = document.createElement('div');
+  itemMain.className = 'item-main';
+
+  const link = document.createElement('a');
+  link.href = href;
+  link.target = '_blank';
+  link.rel = 'noreferrer';
+  link.dataset.value = dataValue;
+  link.textContent = key;
+
+  const itemMeta = document.createElement('div');
+  itemMeta.className = 'item-meta';
+  itemMeta.textContent = meta;
+
+  itemMain.appendChild(link);
+  itemMain.appendChild(itemMeta);
+
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'actions-inline';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'small-btn delete remove-button';
+  removeBtn.dataset.action = action;
+  removeBtn.dataset.key = key;
+  removeBtn.title = 'Remove';
+  removeBtn.setAttribute('aria-label', 'Remove');
+
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'action-icon';
+  iconSpan.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+
+  const labelSpan = document.createElement('span');
+  labelSpan.textContent = 'Remove';
+
+  removeBtn.appendChild(iconSpan);
+  removeBtn.appendChild(labelSpan);
+  actionsDiv.appendChild(removeBtn);
+
+  li.appendChild(itemMain);
+  li.appendChild(actionsDiv);
+
+  return li;
 }
 
 /**
@@ -95,37 +133,42 @@ function createListItems(data, action) {
  */
 async function updateTable(action, data, resultDiv) {
   emptyDiv(resultDiv);
-  // Debugging: log incoming data shape to help diagnose unexpected empty results
-  try { console.debug('updateTable', { action, dataLength: Array.isArray(data) ? data.length : null, data }); } catch (e) {}
+  
   if (data == null) {
-    resultDiv.innerText = 'No available data please try again later.';
+    resultDiv.textContent = 'No available data please try again later.';
     return;
   }
   if (!Array.isArray(data) || data.length === 0) {
-    resultDiv.innerText = '';
+    resultDiv.textContent = '';
     return;
   }
 
-  const listItems = createListItems(data, action);
-  resultDiv.innerHTML = listItems.join('');
-
-  // wire remove buttons
-  const removeButtons = resultDiv.querySelectorAll('.remove-button');
-  removeButtons.forEach((button) => {
-    button.addEventListener('click', async () => {
-      try {
-        const storeName = button.getAttribute('data-action');
-        const key = button.getAttribute('data-key');
-        await removeLink(storeName, key);
-        const fresh = await getDataFromDB(storeName);
-        await updateTable(storeName, fresh, resultDiv);
-      } catch (err) {
-        console.error('Failed to remove item', err);
-      }
-    });
-  });
-
+  // Create a document fragment for better performance
+  const fragment = document.createDocumentFragment();
   
+  data.forEach((item) => {
+    const listItem = createListItemElement(item, action);
+    
+    // Wire remove button
+    const removeBtn = listItem.querySelector('.remove-button');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', async () => {
+        try {
+          const storeName = removeBtn.dataset.action;
+          const key = removeBtn.dataset.key;
+          await removeLink(storeName, key);
+          const fresh = await getDataFromDB(storeName);
+          await updateTable(storeName, fresh, resultDiv);
+        } catch (err) {
+          console.error('Failed to remove item', err);
+        }
+      });
+    }
+    
+    fragment.appendChild(listItem);
+  });
+  
+  resultDiv.appendChild(fragment);
 }
 
 // --- small generators -----------------------------------------------------
@@ -141,15 +184,20 @@ function generateUsername() {
 }
 
 /**
- * Generate a reasonably strong password (default length 12)
+ * Generate a cryptographically strong password (default length 12)
  * @param {number} [length=12]
  * @returns {string}
  */
 function generatePassword(length = 12) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
   let password = '';
+  
+  // Use crypto.getRandomValues for secure random numbers
+  const randomValues = new Uint32Array(length);
+  crypto.getRandomValues(randomValues);
+  
   for (let i = 0; i < length; i++) {
-    const idx = Math.floor(Math.random() * chars.length);
+    const idx = randomValues[i] % chars.length;
     password += chars.charAt(idx);
   }
   return password;

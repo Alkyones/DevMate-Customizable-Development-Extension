@@ -12,6 +12,9 @@
 /* Use border-box everywhere to avoid unexpected overflow from padding/borders */
 *{ box-sizing: border-box; }
 
+/* Ensure hidden attribute works properly */
+[hidden] { display: none !important; }
+
 /* Base layout */
 html, body {
   /* Fixed popup height so the extension window doesn't grow when content expands */
@@ -89,7 +92,7 @@ body{
 body.side-collapsed .side-toggle .hamburger-icon{ transform: rotate(180deg); transition: transform 220ms ease; }
 /* ensure the hamburger lines are visible (white) */
 .side-toggle .hamburger-icon{ color: var(--accent-contrast); stroke: currentColor; }
-.main-content{ flex:1; padding:18px 18px 18px 8px; overflow-y:auto; }
+.main-content{ flex:1; padding:18px 18px 18px 8px; overflow-y:auto; width: 100%; max-width: 100%; box-sizing: border-box; }
 
 /* Top header (title + toggle) centered at the very top of the popup */
 .top-header{ position: relative; height:48px; display:block; }
@@ -303,11 +306,51 @@ li{ margin-bottom:8px }
 /* remove-button no longer needs bespoke styling - rely on .small-btn.delete for visuals */
 
 /* fetch list */
-#fetchRequestList li.fetch-item{ display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:center; padding:10px 12px; background: rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.03) }
-.request-meta{ display:flex; gap:10px; align-items:center; min-width:0 }
-.request-method{ background: rgba(59,130,246,0.14); color: #e9f6ff; padding:8px 10px; border-radius:8px; font-weight:800; font-size:12px; flex:0 0 auto; box-shadow: inset 0 -1px 0 rgba(0,0,0,0.08) }
-.request-url{ color:#e6eef1; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; font-size:13px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-overflow:ellipsis; max-width:520px }
-.request-actions{ margin-left:0; display:flex; flex-direction:row; gap:10px; align-items:center }
+#fetchRequestList li.fetch-item{ 
+  display:flex;
+  flex-direction: column;
+  gap:10px;
+  padding:12px;
+  background: rgba(255,255,255,0.02);
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.03);
+}
+.request-meta{ 
+  display:flex;
+  gap:10px;
+  align-items:center;
+  min-width:0;
+  width: 100%;
+}
+.request-method{ 
+  background: rgba(59,130,246,0.14);
+  color: #e9f6ff;
+  padding:8px 10px;
+  border-radius:8px;
+  font-weight:800;
+  font-size:12px;
+  flex:0 0 auto;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.08);
+}
+.request-url{ 
+  color:#e6eef1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
+  font-size:13px;
+  line-height:1.4;
+  white-space: nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.request-actions{ 
+  display:flex;
+  flex-direction:row;
+  gap:10px;
+  align-items:center;
+  justify-content: flex-start;
+  padding-left: 0;
+}
 
 .small-btn{
   display:inline-flex;
@@ -396,7 +439,7 @@ li{ margin-bottom:8px }
 
 
 /* Unstructured request lines (when capture is disabled) */
-#fetchRequestList{ margin-top:8px }
+#fetchRequestList{ margin-top:8px; width: 100%; }
 /* Style for un-captured request lines (plain li items without .fetch-item) */
 #fetchRequestList li:not(.fetch-item){
   display:flex;
@@ -406,6 +449,8 @@ li{ margin-bottom:8px }
   border-radius:10px;
   background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
   border:1px solid rgba(255,255,255,0.03);
+  width: 100%;
+  box-sizing: border-box;
 }
 #fetchRequestList li:not(.fetch-item) a, #fetchRequestList li:not(.fetch-item) span{
   display:block;
@@ -416,6 +461,8 @@ li{ margin-bottom:8px }
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
+  flex: 1;
+  width: 100%;
 }
 #fetchRequestList li:not(.fetch-item):hover{ background: rgba(255,255,255,0.02); }
 
@@ -424,9 +471,101 @@ li{ margin-bottom:8px }
 .request-actions .small-btn{ min-width:72px }
 
 /* Slight visual polish for fetch-panel container */
-#fetch-requests{ padding-top:8px; max-height:260px; overflow:auto }
+#fetch-requests{ 
+  padding-top:8px; 
+  width: 100%; 
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-#replayResult{ color:#ddd; background: rgba(255,255,255,0.02); border-radius:6px; padding:8px; margin-top:8px; font-size:12px }
+#fetchRequestList { 
+  width: 100%; 
+  max-height: 260px; 
+  overflow: auto;
+}
+
+#replayResult{ 
+  color:#ddd; 
+  background: rgba(255,255,255,0.02); 
+  border-radius:6px; 
+  padding:12px; 
+  margin-top:12px; 
+  font-size:12px;
+  min-height: 80px;
+  border: 1px solid rgba(255,255,255,0.06);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#replayResult:empty::before {
+  content: 'Response will appear here...';
+  color: var(--muted);
+  font-style: italic;
+  opacity: 0.5;
+}
+
+.replay-result-container {
+  padding: 0;
+}
+
+.replay-result-header {
+  margin-bottom: 8px;
+}
+
+.replay-request-details {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.replay-request-details summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.replay-details-content {
+  margin-top: 4px;
+  padding: 8px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
+
+.replay-details-content > div {
+  margin-top: 8px;
+}
+
+.replay-details-content > div:first-child {
+  margin-top: 0;
+}
+
+.replay-details-content > div > strong {
+  color: var(--accent);
+  font-size: 12px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.replay-url {
+  word-break: break-all;
+}
+
+.replay-body-pre,
+.replay-headers-pre,
+.replay-response-pre {
+  margin: 4px 0;
+  max-height: 100px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.replay-response-pre {
+  max-height: 200px;
+  padding: 8px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+}
 
 /* small copied badge for list items */
 .copied-badge{
@@ -486,6 +625,114 @@ li{ margin-bottom:8px }
   border-radius:6px;
   word-break:break-all;
   cursor:pointer;
+}
+
+/* Edit box container styles */
+.edit-box {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+}
+
+.edit-box-label {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.edit-box-input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+}
+
+.edit-box-textarea {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.edit-box-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Styled button - Save */
+.btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 80%, black 20%));
+  color: var(--accent-contrast);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.12);
+  transition: transform 120ms ease;
+}
+
+.btn-save:hover {
+  transform: translateY(-2px);
+}
+
+.btn-save:active {
+  transform: translateY(1px);
+}
+
+/* Styled button - Cancel */
+.btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.12);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.btn-cancel:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.08);
+}
+
+.btn-cancel:active {
+  transform: translateY(1px);
+}
+
+/* localStorage and fetch item layout */
+.ls-item-row,
+.fetch-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ls-item-vertical {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 /* responsive */
