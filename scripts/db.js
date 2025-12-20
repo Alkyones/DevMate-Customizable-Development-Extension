@@ -83,7 +83,8 @@ export async function addCredential(website, key, value) {
   try {
     const tx = db.transaction("credentials", "readwrite");
     const store = tx.objectStore("credentials");
-    const req = store.put({ website, key, value });
+    // Store with key as the primary identifier for display
+    const req = store.put({ key, website, value });
     await promisifyRequest(req);
     return true;
   } catch (e) {

@@ -11,7 +11,21 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["functions.js", "db.js"],
+      "resources": [
+        "functions.js", 
+        "db.js",
+        "scripts/config/constants.js",
+        "scripts/ui/dom-utils.js",
+        "scripts/ui/snackbar.js",
+        "scripts/ui/panel-manager.js",
+        "scripts/features/credential-generator.js",
+        "scripts/features/local-storage.js",
+        "scripts/features/useful-links.js",
+        "scripts/features/credentials.js",
+        "scripts/features/fetch-capture.js",
+        "scripts/features/code-keeper.js",
+        "scripts/features/pinger.js"
+      ],
       "matches": ["*://*/*"]
     }
   ],

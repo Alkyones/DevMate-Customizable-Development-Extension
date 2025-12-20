@@ -94,7 +94,7 @@ body{
 body.side-collapsed .side-toggle .hamburger-icon{ transform: rotate(180deg); transition: transform 220ms ease; }
 /* ensure the hamburger lines are visible (white) */
 .side-toggle .hamburger-icon{ color: var(--accent-contrast); stroke: currentColor; }
-.main-content{ flex:1; padding:18px 18px 18px 8px; overflow-y:auto; width: 100%; max-width: 100%; box-sizing: border-box; }
+.main-content{ flex:1; padding:18px 18px 18px 8px; overflow-y:auto; overflow-x: hidden; width: 100%; max-width: 100%; box-sizing: border-box; }
 
 /* Top header (title + toggle) centered at the very top of the popup */
 .top-header{ position: relative; height:48px; display:block; }
@@ -299,10 +299,24 @@ li{ margin-bottom:8px }
   border: 1px solid rgba(59,130,246,0.06);
   box-shadow: 0 6px 16px rgba(2,6,8,0.35);
 }
-.list-card .item-main{ flex:1; min-width:0 }
-.list-card .item-main a{ color:var(--muted); font-weight:600; font-size:13px; text-decoration: none }
+.list-card .item-main{ flex:1; min-width:0; overflow: hidden; }
+.list-card .item-main a{ 
+  color:var(--muted); 
+  font-weight:600; 
+  font-size:13px; 
+  text-decoration: none;
+  display: block;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
 .list-card .item-main a:hover{ color: var(--accent); text-decoration: underline }
-.list-card .item-meta{ color:var(--muted); font-size:12px; margin-top:4px }
+.list-card .item-meta{ 
+  color:var(--muted); 
+  font-size:12px; 
+  margin-top:4px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
 
 .actions-inline{ display:flex; gap:8px; align-items:center }
 /* Remove / delete button (smaller, compact cross icon) */
