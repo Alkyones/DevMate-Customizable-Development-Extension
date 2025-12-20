@@ -73,6 +73,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg.action === 'localStorage') {
+    // Handle localStorage data message - just acknowledge receipt
+    sendResponse({ ok: true });
+    return true;
+  }
+
   if (msg.action === 'replayRequest') {
     const request = msg.request;
     // perform replay and send a result message back

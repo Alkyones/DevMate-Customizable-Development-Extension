@@ -1,840 +1,90 @@
-import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable, generateUsername, generatePassword, generateEmail } from './functions.js';
-import { addLink, addCredential, getDataFromDB, addCapturedRequest, getCapturedRequests, removeCapturedRequest, updateCapturedRequest, dbReady, addSnippet, getSnippets, removeSnippet, updateSnippet, addPingRequest, getPingRequests, updatePingRequest, removePingRequest } from './db.js';
+/**
+ * DevMate Popup - Main Entry Point
+ * Orchestrates all features and handles minimal popup-specific logic
+ */
 
-// DOM refs
-const resultDiv = document.getElementById('result');
-const credentialsDiv = document.getElementById('credentials');
-const addLinksDiv = document.getElementById('links');
-const showLocalStorageButton = document.getElementById('checkButton');
-const credentialsButton = document.getElementById('credentialsButton');
-const saveLinkButton = document.getElementById('saveLinkButton');
-const saveCurrentLinkButton = document.getElementById('saveCurrentLinkButton');
-const showLinksButton = document.getElementById('showLinksButton');
-const saveCredentialButton = document.getElementById('saveCredentialButton');
-const usefulLinkKeyInput = document.getElementById('linkKeyInput');
-const usefulLinkValueInput = document.getElementById('linkValueInput');
-const usefulLinksList = document.getElementById('usefulLinks');
-const credentialsWebsiteInput = document.getElementById('credentialsWebsiteInput');
-const credentialsKeyInput = document.getElementById('credentialsKeyInput');
-const credentialsValueInput = document.getElementById('credentialsValueInput');
-const credentialsList = document.getElementById('credentialsList');
-const fetchListDiv = document.getElementById('fetch-requests');
-const fetchList = document.getElementById('fetchRequestList');
-const showFetchesButton = document.getElementById('fetchesButton');
-const captureToggle = document.getElementById('captureToggle');
-const clearCapturedButton = document.getElementById('clearCapturedButton');
-const generateCredentialsDiv = document.getElementById('generate-credentials');
-const generateCredentialsButton = document.getElementById('generateCredentialsButton');
-const generateUsernameButton = document.getElementById('generateUsernameButton');
-const generatePasswordButton = document.getElementById('generatePasswordButton');
-const generateEmailButton = document.getElementById('generateEmailButton');
-const generatedResult = document.getElementById('generatedResult');
-const codeKeeperButton = document.getElementById('codeKeeperButton');
-const codeKeeperDiv = document.getElementById('code-keeper');
-const codeTitleInput = document.getElementById('codeTitleInput');
-const codeTextarea = document.getElementById('codeTextarea');
-const saveSnippetButton = document.getElementById('saveSnippetButton');
-const codeSnippetList = document.getElementById('codeSnippetList');
-const snippetStatus = document.getElementById('snippetStatus');
-const sideMenuToggle = document.getElementById('sideMenuToggle');
-const sideMenu = document.getElementById('sideMenu');
-const popupContent = document.getElementById('popup-content');
-const pingerButton = document.getElementById('pingerButton');
-const pingerDiv = document.getElementById('pinger');
-const pingerNameInput = document.getElementById('pingerNameInput');
-const pingerMethodSelect = document.getElementById('pingerMethodSelect');
-const pingerUrlInput = document.getElementById('pingerUrlInput');
-const pingerHeadersInput = document.getElementById('pingerHeadersInput');
-const pingerBodyInput = document.getElementById('pingerBodyInput');
-const pingerIntervalInput = document.getElementById('pingerIntervalInput');
-const savePingerButton = document.getElementById('savePingerButton');
-const pingerStatus = document.getElementById('pingerStatus');
-const pingerList = document.getElementById('pingerList');
+import { dbReady } from './db.js';
+import { PanelManager } from './ui/panel-manager.js';
+import { showSnackbar } from './ui/snackbar.js';
+import { CredentialGenerator } from './features/credential-generator.js';
+import { LocalStorageFeature } from './features/local-storage.js';
+import { UsefulLinksFeature } from './features/useful-links.js';
+import { CredentialsFeature } from './features/credentials.js';
+import { FetchCaptureFeature } from './features/fetch-capture.js';
+import { CodeKeeperFeature } from './features/code-keeper.js';
+import { PingerFeature } from './features/pinger.js';
 
-// visible state for panels
-const visibleState = {
-  localStorageVisible: false,
-  linksListVisible: false,
-  credentialsVisible: false,
-  fetchListVisible: false,
-  generateCredentialsVisible: false,
-  codeKeeperVisible: false,
-  pingerVisible: false,
-};
+// Initialize all feature modules
+const panelManager = new PanelManager();
+const credentialGenerator = new CredentialGenerator(panelManager);
+const localStorageFeature = new LocalStorageFeature(panelManager);
+const usefulLinksFeature = new UsefulLinksFeature(panelManager);
+const credentialsFeature = new CredentialsFeature(panelManager);
+const fetchCaptureFeature = new FetchCaptureFeature(panelManager);
+const codeKeeperFeature = new CodeKeeperFeature(panelManager);
+const pingerFeature = new PingerFeature(panelManager);
 
-// Helper: set button label without removing icon nodes
-function setButtonLabel(button, text) {
-  if (!button) return;
-  const lbl = button.querySelector('.btn-label');
-  if (lbl) {
-    lbl.textContent = text;
-    // keep tooltip in sync with label (cleaned)
-    const cleaned = cleanTooltipLabel(text);
-    button.dataset.tooltip = cleaned;
-  } else {
-    button.textContent = text;
-    button.dataset.tooltip = cleanTooltipLabel(text);
+// Global message listeners for background script communication
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'newCapturedRequest') {
+    fetchCaptureFeature.prependCapturedRequestToUI(message.request);
   }
-}
-
-function cleanTooltipLabel(raw) {
-  if (!raw) return '';
-  // remove common leading verbs/words like 'Show', 'Hide', 'Check', 'Hide Code', etc.
-  // Also remove leading punctuation and ellipses
-  let s = String(raw).trim();
-  // remove trailing ellipsis and collapse spaces
-  s = s.replace(/\.{2,}$/g, '').trim();
-  s = s.replace(/^(Show|Hide|Check|Hide\s+Code|Add)\s+/i, '');
-  // If it starts with 'Hide ' remove it
-  s = s.replace(/^Hide\s+/i, '');
-  // remove leading 'Show Fetch' -> 'Fetch'
-  s = s.replace(/^Show\s+/i, '');
-  return s.trim();
-}
-
-// Panel mapping for toggles
-const panelMap = new Map([
-  [showLocalStorageButton, { key: 'localStorageVisible', element: resultDiv }],
-  [showLinksButton, { key: 'linksListVisible', element: addLinksDiv }],
-  [credentialsButton, { key: 'credentialsVisible', element: credentialsDiv }],
-  [showFetchesButton, { key: 'fetchListVisible', element: fetchListDiv }],
-  [generateCredentialsButton, { key: 'generateCredentialsVisible', element: generateCredentialsDiv }],
-  [codeKeeperButton, { key: 'codeKeeperVisible', element: codeKeeperDiv }],
-  [pingerButton, { key: 'pingerVisible', element: pingerDiv }],
-]);
-
-// Side menu toggle: collapse/expand the left menu
-// initialize side menu button tooltips (data-tooltip) from label text
-if (sideMenu) {
-  const menuButtons = sideMenu.querySelectorAll('.button-container > button');
-  menuButtons.forEach(btn => {
-    const lbl = btn.querySelector('.btn-label');
-    if (lbl) btn.dataset.tooltip = cleanTooltipLabel(lbl.textContent.trim());
-  });
-  // accessibility: set aria-label from tooltip or visible label so screen readers have a name
-  menuButtons.forEach(btn => {
-    const tooltip = btn.dataset.tooltip || (btn.querySelector('.btn-label') && btn.querySelector('.btn-label').textContent.trim());
-    if (tooltip) btn.setAttribute('aria-label', tooltip);
-  });
-}
-
-// restore collapsed state from storage
-// Force start expanded (do not automatically restore hidden state on load)
-// but persist future toggles. This ensures popup opens expanded each time.
-try {
-  document.body.classList.remove('side-collapsed');
-  if (sideMenuToggle) sideMenuToggle.title = 'Hide';
-  // set storage to false so previous hidden state doesn't persist
-  chrome.storage && chrome.storage.local && chrome.storage.local.set({ sideCollapsed: false });
-} catch (e) { /* ignore */ }
-
-sideMenuToggle?.addEventListener('click', () => {
-  const collapsed = document.body.classList.toggle('side-collapsed');
-  sideMenuToggle.title = collapsed ? 'Expand' : 'Hide';
-  // persist state
-  try {
-    chrome.storage.local.set({ sideCollapsed: collapsed });
-  } catch (e) {
-    // fall back silently if storage not available
+  if (message.action === 'replayResult') {
+    displayReplayResult(message.result);
+  }
+  if (message.action === 'pingResult') {
+    // Handle ping results if needed
+    console.log('Ping result:', message);
+  }
+  if (message.action === 'localStorage') {
+    displayLocalStorageResults(message);
   }
 });
 
-// Toggle display: hide others and toggle the requested panel
-async function toggleDisplay(button) {
-  emptyDiv(resultDiv);
-  emptyDiv(credentialsList);
-  emptyDiv(fetchList);
-
-  const info = panelMap.get(button);
-  if (!info) return;
-
-  for (const [, p] of panelMap.entries()) {
-    visibleState[p.key] = (p === info) ? !visibleState[p.key] : false;
-  }
-
-  for (const [btn, p] of panelMap.entries()) {
-    if (p.element) p.element.hidden = !visibleState[p.key];
-  }
-
-  setButtonLabel(showLocalStorageButton, visibleState.localStorageVisible ? 'Hide Local Storage' : 'Show Local Storage');
-  setButtonLabel(showLinksButton, visibleState.linksListVisible ? 'Hide Useful Links' : 'Show Useful Links');
-  setButtonLabel(credentialsButton, visibleState.credentialsVisible ? 'Hide Credentials' : 'Show Credentials');
-  setButtonLabel(showFetchesButton, visibleState.fetchListVisible ? 'Hide Fetch Requests' : 'Show Fetch Requests');
-  setButtonLabel(generateCredentialsButton, visibleState.generateCredentialsVisible ? 'Hide Credential Generator' : 'Show Credential Generator');
-  setButtonLabel(codeKeeperButton, visibleState.codeKeeperVisible ? 'Hide Code Keeper' : 'Code Keeper');
-  setButtonLabel(pingerButton, visibleState.pingerVisible ? 'Hide Pinger' : 'Pinger');
+// Handle replay results display
+function displayReplayResult(result) {
+  const replayDiv = document.getElementById('replayResult');
+  if (!replayDiv) return;
+  
+  replayDiv.innerHTML = `
+    <div class="replay-result">
+      <h4>Replay Result for Request ID: ${result.requestId}</h4>
+      <p><strong>Status:</strong> ${result.status || 'N/A'} ${result.statusText || ''}</p>
+      <p><strong>Response Time:</strong> ${result.timestamp ? 'Completed at ' + new Date(result.timestamp).toLocaleTimeString() : 'N/A'}</p>
+      ${result.error ? `<p class="error"><strong>Error:</strong> ${result.error}</p>` : ''}
+      ${result.body ? `<div class="response-body"><strong>Response Body:</strong><pre>${result.body.slice(0, 500)}${result.body.length > 500 ? '...' : ''}</pre></div>` : ''}
+    </div>
+  `;
 }
 
-// Snackbar for small transient messages
-function showSnackbar(text, timeout = 1400) {
-  const bar = document.getElementById('copied');
-  if (!bar) return;
-  bar.textContent = text;
-  bar.classList.add('show');
-  clearTimeout(bar._hideTimer);
-  bar._hideTimer = setTimeout(() => bar.classList.remove('show'), timeout);
-}
+// Handle localStorage results display
+function displayLocalStorageResults(message) {
+  const resultDiv = document.getElementById('result');
+  if (!resultDiv) return;
 
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+  resultDiv.innerHTML = '';
 
-// ----------- EVENT HANDLERS (cleaned) -----------
-saveCredentialButton?.addEventListener('click', async () => {
-  await dbReady;
-  const website = credentialsWebsiteInput?.value.trim() || '';
-  const key = credentialsKeyInput?.value.trim() || '';
-  const value = credentialsValueInput?.value.trim() || '';
-  if (website && key && value) {
-    await addCredential(website, key, value);
-    credentialsWebsiteInput.value = '';
-    credentialsKeyInput.value = '';
-    credentialsValueInput.value = '';
-  } else {
-    alert('Please enter website, username and password.');
-  }
-  const data = await getDataFromDB('credentials');
-  await updateTable('credentials', data, credentialsList);
-});
-
-saveLinkButton?.addEventListener('click', async () => {
-  try {
-    await dbReady;
-    const key = (usefulLinkKeyInput?.value || '').trim();
-    const value = (usefulLinkValueInput?.value || '').trim();
-    if (!key || !value) { alert('Please enter both a key and a value.'); return; }
-    const ok = await addLink(key, value);
-    if (ok) showSnackbar('Link saved');
-    if (usefulLinkKeyInput) usefulLinkKeyInput.value = '';
-    if (usefulLinkValueInput) usefulLinkValueInput.value = '';
-    const data = await getDataFromDB('usefulLinks');
-    await updateTable('usefulLinks', data, usefulLinksList);
-  } catch (err) {
-    console.error('saveLink error', err);
-    showSnackbar('Error saving link');
-  }
-});
-
-saveCurrentLinkButton?.addEventListener('click', async () => {
-  try {
-    await dbReady;
-    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-      const activeTab = tabs && tabs[0];
-      if (!activeTab) { showSnackbar('No active tab'); return; }
-      const key = activeTab.title || activeTab.url;
-      const value = activeTab.url;
-      const ok = await addLink(key, value);
-      if (ok) showSnackbar('Current link saved');
-      const data = await getDataFromDB('usefulLinks');
-      await updateTable('usefulLinks', data, usefulLinksList);
-    });
-  } catch (err) {
-    console.error('saveCurrentLink error', err);
-    showSnackbar('Error saving current link');
-  }
-});
-
-showLinksButton?.addEventListener('click', async () => {
-  await dbReady;
-  await toggleDisplay(showLinksButton);
-  if (visibleState.linksListVisible) {
-    const linksInDB = await getDataFromDB('usefulLinks');
-    await updateTable('usefulLinks', linksInDB, usefulLinksList);
-  }
-});
-
-showLocalStorageButton?.addEventListener('click', async () => {
-  await dbReady;
-  await toggleDisplay(showLocalStorageButton);
-  if (visibleState.localStorageVisible) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const activeTab = tabs[0];
-      if (!activeTab) return;
-      chrome.scripting.executeScript({ target: { tabId: activeTab.id }, function: checkLocalStorage });
-    });
-  }
-});
-
-credentialsButton?.addEventListener('click', async () => {
-  await dbReady;
-  await toggleDisplay(credentialsButton);
-  if (visibleState.credentialsVisible) {
-    const credentialsData = await getDataFromDB('credentials');
-    await updateTable('credentials', credentialsData, credentialsList);
-  }
-});
-
-showFetchesButton?.addEventListener('click', async () => {
-  await dbReady;
-  await toggleDisplay(showFetchesButton);
-  if (visibleState.fetchListVisible) {
-    await loadCapturedRequests();
-    chrome.storage.local.get({ captureEnabled: false }, (items) => { captureToggle.checked = !!items.captureEnabled; });
-  }
-});
-
-// ----------- Code Keeper handlers -----------
-let _editingSnippetId = null;
-
-function renderSnippetItem(s) {
-  const item = document.createElement('li');
-  item.className = 'list-card';
-  item.dataset.id = s.id;
-  const main = document.createElement('div'); main.className = 'item-main';
-  const title = document.createElement('div'); title.style.fontWeight = '700'; title.style.fontSize = '13px'; title.textContent = s.title || '(untitled)';
-  const meta = document.createElement('div'); meta.className = 'item-meta'; meta.textContent = s.updatedAt ? new Date(s.updatedAt).toLocaleString() : '';
-  const actions = document.createElement('div'); actions.className = 'actions-inline';
-
-  const copyBtn = createActionButton({ classes: ['replay'], title: 'Copy code', label: 'Copy', html: '', onClick: () => { copyValueToClipboard(s.code); showSnackbar('Copied'); } });
-  const editBtn = createActionButton({ classes: ['edit'], title: 'Edit snippet', label: 'Edit', html: '', onClick: () => { _editingSnippetId = s.id; codeTitleInput.value = s.title || ''; codeTextarea.value = s.code || ''; snippetStatus.textContent = 'Editing...'; } });
-  const delBtn = createActionButton({ classes: ['delete'], title: 'Delete snippet', label: 'Delete', html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`, onClick: async () => { await removeSnippet(s.id); await loadSnippets(); showSnackbar('Deleted'); } });
-
-  actions.appendChild(copyBtn); actions.appendChild(editBtn); actions.appendChild(delBtn);
-  main.appendChild(title); main.appendChild(meta);
-  item.appendChild(main); item.appendChild(actions);
-  return item;
-}
-
-async function loadSnippets() {
-  emptyDiv(codeSnippetList);
-  const items = await getSnippets();
-  (items || []).forEach(s => codeSnippetList.appendChild(renderSnippetItem(s)));
-}
-
-saveSnippetButton?.addEventListener('click', async () => {
-  await dbReady;
-  const title = (codeTitleInput?.value || '').trim();
-  const code = (codeTextarea?.value || '').trim();
-  if (!code) { alert('Please enter some code'); return; }
-  const payload = { title: title || (code.slice(0, 64) + (code.length > 64 ? '...' : '')), code };
-  if (_editingSnippetId) {
-    await updateSnippet(_editingSnippetId, { title: payload.title, code: payload.code });
-    snippetStatus.textContent = 'Saved (updated)';
-    _editingSnippetId = null;
-  } else {
-    await addSnippet(payload);
-    snippetStatus.textContent = 'Saved';
-  }
-  codeTitleInput.value = '';
-  codeTextarea.value = '';
-  setTimeout(() => { snippetStatus.textContent = ''; }, 1200);
-  await loadSnippets();
-});
-
-codeKeeperButton?.addEventListener('click', async () => {
-  await dbReady;
-  await toggleDisplay(codeKeeperButton);
-  if (visibleState.codeKeeperVisible) {
-    await loadSnippets();
-  }
-});
-
-// ----------- Pinger handlers -----------
-let _editingPingerId = null;
-
-function renderPingItem(pingRequest) {
-  const item = document.createElement('li');
-  item.className = 'list-card';
-  item.dataset.id = pingRequest.id;
-  
-  const main = document.createElement('div');
-  main.className = 'item-main';
-  
-  const title = document.createElement('div');
-  title.style.fontWeight = '700';
-  title.style.fontSize = '13px';
-  title.textContent = pingRequest.name || 'Unnamed Request';
-  
-  const url = document.createElement('div');
-  url.style.fontSize = '12px';
-  url.style.color = 'var(--muted)';
-  url.textContent = `${pingRequest.method} ${pingRequest.url}`;
-  
-  const meta = document.createElement('div');
-  meta.className = 'item-meta';
-  const intervalText = `${pingRequest.interval}s interval`;
-  const statusText = pingRequest.isActive ? '🟢 Active' : '⭕ Inactive';
-  const lastPingText = pingRequest.lastPingAt ? ` | Last: ${new Date(pingRequest.lastPingAt).toLocaleTimeString()}` : '';
-  const statusInfo = pingRequest.lastStatus ? ` | Status: ${pingRequest.lastStatus}` : '';
-  meta.textContent = `${intervalText} | ${statusText}${lastPingText}${statusInfo}`;
-  
-  const actions = document.createElement('div');
-  actions.className = 'actions-inline';
-  
-  const pingBtn = createActionButton({
-    classes: ['replay'],
-    title: 'Execute ping now',
-    label: 'Ping',
-    html: '',
-    onClick: async () => {
-      try {
-        const result = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage({
-            action: 'executePing',
-            pingRequest: pingRequest
-          }, (response) => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(response);
-            }
-          });
-        });
-        
-        if (result.ok) {
-          showSnackbar(`Ping executed: ${result.result.status} (${result.result.responseTime}ms)`);
-          await updatePingRequest(pingRequest.id, {
-            lastPingAt: Date.now(),
-            lastStatus: result.result.status,
-            lastError: result.result.error || null,
-            pingCount: (pingRequest.pingCount || 0) + 1
-          });
-          await loadPingRequests();
-        } else {
-          showSnackbar(`Ping failed: ${result.error}`);
-        }
-      } catch (error) {
-        console.error('Ping execution error:', error);
-        showSnackbar(`Ping error: ${error.message}`);
-      }
-    }
-  });
-  
-  const toggleBtn = createActionButton({
-    classes: pingRequest.isActive ? ['delete'] : ['replay'],
-    title: pingRequest.isActive ? 'Stop pinging' : 'Start pinging',
-    label: pingRequest.isActive ? 'Stop' : 'Start',
-    html: '',
-    onClick: async () => {
-      try {
-        const messageAction = pingRequest.isActive ? 'stopPing' : 'startPing';
-        const messageData = pingRequest.isActive 
-          ? { action: 'stopPing', pingId: pingRequest.id }
-          : { action: 'startPing', pingRequest: pingRequest };
-          
-        const result = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(messageData, (response) => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(response);
-            }
-          });
-        });
-        
-        if (pingRequest.isActive) {
-          await updatePingRequest(pingRequest.id, { isActive: false });
-          showSnackbar('Ping stopped');
-        } else {
-          await updatePingRequest(pingRequest.id, { isActive: true });
-          showSnackbar('Ping started');
-        }
-        await loadPingRequests();
-      } catch (error) {
-        console.error('Toggle ping error:', error);
-        showSnackbar(`Error: ${error.message}`);
-      }
-    }
-  });
-  
-  const editBtn = createActionButton({
-    classes: ['edit'],
-    title: 'Edit ping request',
-    label: 'Edit',
-    html: '',
-    onClick: () => {
-      _editingPingerId = pingRequest.id;
-      pingerNameInput.value = pingRequest.name || '';
-      pingerMethodSelect.value = pingRequest.method || 'GET';
-      pingerUrlInput.value = pingRequest.url || '';
-      pingerHeadersInput.value = pingRequest.headers || '';
-      pingerBodyInput.value = pingRequest.body || '';
-      pingerIntervalInput.value = pingRequest.interval || 60;
-      pingerStatus.textContent = 'Editing...';
-    }
-  });
-  
-  const delBtn = createActionButton({
-    classes: ['delete'],
-    title: 'Delete ping request',
-    label: 'Delete',
-    html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`,
-    onClick: async () => {
-      // Stop ping if active
-      if (pingRequest.isActive) {
-        await chrome.runtime.sendMessage({ action: 'stopPing', pingId: pingRequest.id });
-      }
-      await removePingRequest(pingRequest.id);
-      await loadPingRequests();
-      showSnackbar('Ping request deleted');
-    }
-  });
-  
-  actions.appendChild(pingBtn);
-  actions.appendChild(toggleBtn);
-  actions.appendChild(editBtn);
-  actions.appendChild(delBtn);
-  
-  main.appendChild(title);
-  main.appendChild(url);
-  main.appendChild(meta);
-  
-  item.appendChild(main);
-  item.appendChild(actions);
-  
-  return item;
-}
-
-async function loadPingRequests() {
-  emptyDiv(pingerList);
-  const items = await getPingRequests();
-  (items || []).forEach(p => pingerList.appendChild(renderPingItem(p)));
-}
-
-savePingerButton?.addEventListener('click', async () => {
-  await dbReady;
-  const name = (pingerNameInput?.value || '').trim();
-  const method = pingerMethodSelect?.value || 'GET';
-  const url = (pingerUrlInput?.value || '').trim();
-  const headers = (pingerHeadersInput?.value || '').trim();
-  const body = (pingerBodyInput?.value || '').trim();
-  const interval = parseInt(pingerIntervalInput?.value) || 60;
-  
-  if (!name || !url) {
-    alert('Please enter a name and URL for the ping request.');
-    return;
-  }
-  
-  if (interval < 1 || interval > 3600) {
-    alert('Interval must be between 1 and 3600 seconds.');
-    return;
-  }
-  
-  // Validate URL format
-  try {
-    new URL(url);
-  } catch (e) {
-    alert('Please enter a valid URL.');
-    return;
-  }
-  
-  // Validate headers JSON if provided
-  if (headers) {
-    try {
-      JSON.parse(headers);
-    } catch (e) {
-      alert('Headers must be valid JSON format.');
-      return;
-    }
-  }
-  
-  const pingData = {
-    name: name,
-    method: method,
-    url: url,
-    headers: headers,
-    body: body,
-    interval: interval
-  };
-  
-  if (_editingPingerId) {
-    await updatePingRequest(_editingPingerId, pingData);
-    pingerStatus.textContent = 'Ping request updated';
-    _editingPingerId = null;
-  } else {
-    const id = await addPingRequest(pingData);
-    if (id) {
-      pingerStatus.textContent = 'Ping request saved';
-    } else {
-      pingerStatus.textContent = 'Error saving ping request';
-    }
-  }
-  
-  // Clear form
-  pingerNameInput.value = '';
-  pingerMethodSelect.value = 'GET';
-  pingerUrlInput.value = '';
-  pingerHeadersInput.value = '';
-  pingerBodyInput.value = '';
-  pingerIntervalInput.value = '60';
-  
-  setTimeout(() => { pingerStatus.textContent = ''; }, 2000);
-  await loadPingRequests();
-});
-
-pingerButton?.addEventListener('click', async () => {
-  await dbReady;
-  await toggleDisplay(pingerButton);
-  if (visibleState.pingerVisible) {
-    await loadPingRequests();
-  }
-});
-
-
-
-captureToggle?.addEventListener('change', () => {
-  const enabled = !!captureToggle.checked;
-  chrome.runtime.sendMessage({ action: 'toggleCapture', enabled }, (resp) => {
-    if (chrome.runtime.lastError) console.warn('toggleCapture send failed', chrome.runtime.lastError);
-    else showSnackbar(enabled ? 'Capture enabled' : 'Capture disabled');
-  });
-});
-
-clearCapturedButton?.addEventListener('click', () => {
-  chrome.storage.local.set({ capturedRequests: [] }, () => {
-    emptyDiv(fetchList);
-    const replayDiv = document.getElementById('replayResult');
-    if (replayDiv) replayDiv.innerHTML = '';
-    showSnackbar('Cleared captured requests');
-  });
-});
-
-generateCredentialsButton?.addEventListener('click', async () => await toggleDisplay(generateCredentialsButton));
-
-generateUsernameButton?.addEventListener('click', () => {
-  const username = generateUsername();
-  if (generatedResult) { generatedResult.textContent = username; generatedResult.classList.add('show'); }
-});
-generatePasswordButton?.addEventListener('click', () => {
-  const password = generatePassword();
-  if (generatedResult) { generatedResult.textContent = password; generatedResult.classList.add('show'); }
-});
-generateEmailButton?.addEventListener('click', () => {
-  const email = generateEmail();
-  if (generatedResult) { generatedResult.textContent = email; generatedResult.classList.add('show'); }
-});
-
-generatedResult?.addEventListener('click', () => {
-  const text = generatedResult.textContent || '';
-  if (!text) return;
-  copyValueToClipboard(text);
-  showSnackbar('Copied');
-  generatedResult.classList.remove('show');
-  const onTransitionEnd = (e) => {
-    if (e.propertyName === 'opacity') {
-      generatedResult.textContent = '';
-      generatedResult.removeEventListener('transitionend', onTransitionEnd);
-    }
-  };
-  generatedResult.addEventListener('transitionend', onTransitionEnd);
-});
-
-// ----------- Fetch/captured requests UI helpers -----------
-function createActionButton({ classes = [], title = '', label = '', html = '', onClick = null }) {
-  const btn = document.createElement('button');
-  btn.classList.add('small-btn', ...classes);
-  if (title) btn.title = title;
-  if (label) {
-    const lbl = document.createElement('span'); lbl.textContent = label; btn.appendChild(lbl);
-  }
-  if (html) {
-    const icon = document.createElement('span'); icon.className = 'action-icon'; icon.innerHTML = html; btn.insertBefore(icon, btn.firstChild);
-  }
-  if (typeof onClick === 'function') btn.addEventListener('click', onClick);
-  return btn;
-}
-
-// Utility: Create styled Save button
-function createStyledSaveButton(text = 'Save') {
-  const btn = document.createElement('button');
-  btn.className = 'btn-save';
-  btn.textContent = text;
-  return btn;
-}
-
-// Utility: Create styled Cancel button
-function createStyledCancelButton(text = 'Cancel') {
-  const btn = document.createElement('button');
-  btn.className = 'btn-cancel';
-  btn.textContent = text;
-  return btn;
-}
-
-// Utility: Create styled textarea
-function createStyledTextarea(value = '', height = '80px') {
-  const textarea = document.createElement('textarea');
-  textarea.className = 'edit-box-textarea';
-  textarea.value = value;
-  textarea.style.height = height;
-  return textarea;
-}
-
-// Utility: Create styled input
-function createStyledInput(value = '', type = 'text') {
-  const input = document.createElement('input');
-  input.className = 'edit-box-input';
-  input.type = type;
-  input.value = value;
-  return input;
-}
-
-// Utility: Create form label
-function createLabel(text) {
-  const label = document.createElement('div');
-  label.className = 'edit-box-label';
-  label.textContent = text;
-  return label;
-}
-
-function createFetchItem(r, { prepend = false } = {}) {
-  const newListItem = document.createElement('li');
-  newListItem.classList.add('fetch-item');
-  newListItem.dataset.requestId = r.id;
-
-  const meta = document.createElement('div'); meta.className = 'request-meta';
-  const methodBadge = document.createElement('div'); methodBadge.className = 'request-method'; methodBadge.textContent = r.method;
-  const urlSpan = document.createElement('div'); urlSpan.className = 'request-url'; urlSpan.title = r.url; urlSpan.textContent = `${r.url} (${new Date(r.timestamp).toLocaleTimeString()})`;
-  meta.appendChild(methodBadge); meta.appendChild(urlSpan);
-
-  const actions = document.createElement('div'); actions.className = 'request-actions';
-
-  const replayBtn = createActionButton({ classes: ['replay'], title: 'Replay request', label: 'Replay', html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M20 20v-6a7 7 0 00-7-7H7"/></svg>`, onClick: () => chrome.runtime.sendMessage({ action: 'replayRequest', request: r }) });
-
-  const editBtn = createActionButton({ classes: ['edit'], title: 'Edit request', label: 'Edit', html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`, onClick: () => openEditBox(r, newListItem, actions) });
-
-  const delBtn = createActionButton({ classes: ['delete'], title: 'Delete request', label: 'Delete', html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`, onClick: async () => { await removeCapturedRequest(r.id); newListItem.remove(); } });
-
-  actions.appendChild(replayBtn); actions.appendChild(editBtn); actions.appendChild(delBtn);
-  newListItem.appendChild(meta);
-  newListItem.appendChild(actions);
-
-  if (prepend && fetchList.firstChild) fetchList.insertBefore(newListItem, fetchList.firstChild);
-  else fetchList.appendChild(newListItem);
-}
-
-function prependCapturedRequestToUI(r) { createFetchItem(r, { prepend: true }); }
-function appendCapturedRequestToUI(r) { createFetchItem(r, { prepend: false }); }
-
-function openEditBox(r, container, actionsElement) {
-  if (actionsElement) actionsElement.style.display = 'none';
-  
-  const editor = document.createElement('div');
-  editor.className = 'edit-box';
-
-  const headersLabel = createLabel('Headers (JSON array or object):');
-  let headersValue;
-  try { headersValue = JSON.stringify(r.headers, null, 2); } catch (e) { headersValue = ''; }
-  const headersInput = createStyledTextarea(headersValue);
-  
-  const bodyLabel = createLabel('Body (string):');
-  const bodyInput = createStyledTextarea(r.body || '');
-  
-  const btnContainer = document.createElement('div');
-  btnContainer.className = 'edit-box-buttons';
-  
-  const saveBtn = createStyledSaveButton();
-  saveBtn.addEventListener('click', async () => {
-    let parsedHeaders = r.headers;
-    try { parsedHeaders = JSON.parse(headersInput.value); } catch (e) { alert('Headers JSON invalid'); return; }
-    const updated = { headers: parsedHeaders, body: bodyInput.value };
-    await updateCapturedRequest(r.id, updated);
-    editor.remove();
-    if (actionsElement) actionsElement.style.display = 'flex';
-    await loadCapturedRequests();
-  });
-  
-  const cancelBtn = createStyledCancelButton();
-  cancelBtn.addEventListener('click', () => {
-    editor.remove();
-    if (actionsElement) actionsElement.style.display = 'flex';
-  });
-  
-  btnContainer.appendChild(saveBtn);
-  btnContainer.appendChild(cancelBtn);
-  editor.appendChild(headersLabel);
-  editor.appendChild(headersInput);
-  editor.appendChild(bodyLabel);
-  editor.appendChild(bodyInput);
-  editor.appendChild(btnContainer);
-  container.appendChild(editor);
-}
-
-function openLocalStorageEditBox(key, value, container, actionsElement) {
-  if (actionsElement) actionsElement.style.display = 'none';
-  
-  const editor = document.createElement('div');
-  editor.className = 'edit-box';
-
-  const keyLabel = createLabel('Key:');
-  const keyInput = createStyledInput(key);
-  
-  const valueLabel = createLabel('Value:');
-  const valueInput = createStyledTextarea(value, '120px');
-  
-  const btnContainer = document.createElement('div');
-  btnContainer.className = 'edit-box-buttons';
-  
-  const saveBtn = createStyledSaveButton();
-  saveBtn.addEventListener('click', () => {
-    const newKey = keyInput.value.trim();
-    const newValue = valueInput.value;
-    if (!newKey) { alert('Key cannot be empty'); return; }
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const activeTab = tabs[0];
-      if (!activeTab) return;
-      chrome.scripting.executeScript({
-        target: { tabId: activeTab.id },
-        func: (oldKey, newKey, newValue) => {
-          if (oldKey !== newKey) localStorage.removeItem(oldKey);
-          localStorage.setItem(newKey, newValue);
-        },
-        args: [key, newKey, newValue]
-      }, () => {
-        editor.remove();
-        if (actionsElement) actionsElement.style.display = 'flex';
-        showSnackbar('Saved');
-        chrome.scripting.executeScript({ target: { tabId: activeTab.id }, function: checkLocalStorage });
-      });
-    });
-  });
-  
-  const cancelBtn = createStyledCancelButton();
-  cancelBtn.addEventListener('click', () => {
-    editor.remove();
-    if (actionsElement) actionsElement.style.display = 'flex';
-  });
-  
-  btnContainer.appendChild(saveBtn);
-  btnContainer.appendChild(cancelBtn);
-  editor.appendChild(keyLabel);
-  editor.appendChild(keyInput);
-  editor.appendChild(valueLabel);
-  editor.appendChild(valueInput);
-  editor.appendChild(btnContainer);
-  container.appendChild(editor);
-}
-
-async function loadCapturedRequests() {
-  emptyDiv(fetchList);
-  const requests = await getCapturedRequests();
-  requests.forEach(r => appendCapturedRequestToUI(r));
-}
-
-// Handle localStorage display
-function handleLocalStorageMessage(message) {
   if (message.isEmpty) {
     resultDiv.textContent = 'Local Storage is empty.';
     return;
   }
-  
+
   const localStorageData = message.localStorageData;
   if (!localStorageData) {
     resultDiv.textContent = 'Local Storage data is unavailable.';
     return;
   }
-  
+
   const keysList = document.createElement('ul');
   Object.keys(localStorageData).forEach((key) => {
     const listItem = createLocalStorageListItem(key, localStorageData[key]);
     keysList.appendChild(listItem);
   });
-  
-  resultDiv.innerHTML = '';
+
   resultDiv.appendChild(keysList);
 }
 
-// Create a single localStorage list item
+// Create a single localStorage list item with proper styling
 function createLocalStorageListItem(key, value) {
   const displayedKey = key.length > 45 ? key.slice(0, 45) + '...' : key;
   
@@ -850,43 +100,51 @@ function createLocalStorageListItem(key, value) {
   const keyLink = document.createElement('a');
   keyLink.href = '#';
   keyLink.textContent = displayedKey;
-  keyLink.title = key;
   keyLink.style.textDecoration = 'none';
   
   const copiedBadge = document.createElement('div');
   copiedBadge.className = 'copied-badge';
   copiedBadge.textContent = 'Copied';
   
-  keyLink.addEventListener('click', (e) => {
+  keyLink.addEventListener('click', async (e) => {
     e.preventDefault();
-    copyValueToClipboard(value);
-    copiedBadge.classList.add('show');
-    const prevColor = keyLink.style.color;
-    keyLink.style.color = '';
-    setTimeout(() => {
-      copiedBadge.classList.remove('show');
-      keyLink.style.color = prevColor;
-      showSnackbar('Copied');
-    }, 1200);
+    try {
+      await navigator.clipboard.writeText(value);
+      copiedBadge.classList.add('show');
+      const prevColor = keyLink.style.color;
+      keyLink.style.color = '';
+      setTimeout(() => {
+        copiedBadge.classList.remove('show');
+        keyLink.style.color = prevColor;
+      }, 1200);
+    } catch (err) {
+      console.warn('Copy failed', err);
+    }
   });
+  
+  itemMain.appendChild(keyLink);
+  itemMain.appendChild(copiedBadge);
   
   const actions = document.createElement('div');
   actions.className = 'actions-inline';
   
   const copyBtn = createActionButton({
     classes: ['replay'],
-    title: 'Copy value',
     label: 'Copy',
     html: '',
-    onClick: () => {
-      copyValueToClipboard(value);
-      showSnackbar('Copied');
+    onClick: async () => {
+      try {
+        await navigator.clipboard.writeText(value);
+        showSnackbar('Copied!');
+      } catch (err) {
+        console.warn('Copy failed', err);
+        showSnackbar('Copy failed');
+      }
     }
   });
   
   const editBtn = createActionButton({
     classes: ['edit'],
-    title: 'Edit item',
     label: 'Edit',
     html: '',
     onClick: () => openLocalStorageEditBox(key, value, listItem, actions)
@@ -894,7 +152,6 @@ function createLocalStorageListItem(key, value) {
   
   const delBtn = createActionButton({
     classes: ['delete'],
-    title: 'Delete item',
     label: 'Delete',
     html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`,
     onClick: () => {
@@ -908,7 +165,6 @@ function createLocalStorageListItem(key, value) {
             args: [key]
           }, () => {
             listItem.remove();
-            showSnackbar('Deleted');
           });
         });
       }
@@ -918,91 +174,168 @@ function createLocalStorageListItem(key, value) {
   actions.appendChild(copyBtn);
   actions.appendChild(editBtn);
   actions.appendChild(delBtn);
-  itemMain.appendChild(keyLink);
-  topRow.appendChild(copiedBadge);
+  
   topRow.appendChild(itemMain);
   topRow.appendChild(actions);
+  
+  const valueRow = document.createElement('div');
+  valueRow.className = 'ls-value-row';
+  const valueDiv = document.createElement('div');
+  valueDiv.className = 'ls-value';
+  valueDiv.textContent = String(value).length > 100 ? String(value).slice(0, 100) + '...' : value;
+  valueRow.appendChild(valueDiv);
+  
   listItem.appendChild(topRow);
+  listItem.appendChild(valueRow);
   
   return listItem;
 }
 
-// Consolidated message handler
-chrome.runtime.onMessage.addListener((message) => {
-  if (!message || !message.action) return;
+// localStorage edit functionality
+function openLocalStorageEditBox(key, value, container, actionsElement) {
+  if (actionsElement) actionsElement.style.display = 'none';
   
-  if (message.action === 'pingResult') {
-    (async () => {
-      try {
-        await updatePingRequest(message.pingId, {
-          lastPingAt: message.timestamp,
-          lastStatus: message.result?.status || 0,
-          lastError: message.error || null,
-          pingCount: (await getPingRequests()).find(p => p.id === message.pingId)?.pingCount + 1 || 1
+  const editor = document.createElement('div');
+  editor.className = 'edit-box';
+
+  const keyLabel = createLabel('Key:');
+  const keyInput = createStyledInput(key);
+  
+  const valueLabel = createLabel('Value:');
+  const valueInput = createStyledTextarea(value);
+
+  const saveBtn = createStyledSaveButton('Save');
+  const cancelBtn = createStyledCancelButton('Cancel');
+
+  saveBtn.addEventListener('click', () => {
+    const newKey = keyInput.value || key;
+    const newValue = valueInput.value || value;
+    
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const activeTab = tabs[0];
+      if (!activeTab) return;
+      
+      chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        func: (oldKey, newKey, newValue) => {
+          if (oldKey !== newKey) localStorage.removeItem(oldKey);
+          localStorage.setItem(newKey, newValue);
+        },
+        args: [key, newKey, newValue]
+      }, () => {
+        chrome.scripting.executeScript({ 
+          target: { tabId: activeTab.id }, 
+          function: () => {
+            const isEmpty = Object.keys(localStorage).length === 0;
+            const localStorageData = isEmpty ? null : localStorage;
+            chrome.runtime.sendMessage({ action: 'localStorage', isEmpty, localStorageData }, (response) => {
+              if (chrome.runtime.lastError) {
+                console.warn('localStorage message failed:', chrome.runtime.lastError);
+              }
+            });
+          }
         });
-        if (visibleState.pingerVisible) {
-          await loadPingRequests();
-        }
-      } catch (error) {
-        console.error('Error handling ping result:', error);
-      }
-    })();
-    return;
+      });
+    });
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    editor.remove();
+    if (actionsElement) actionsElement.style.display = '';
+  });
+
+  editor.appendChild(keyLabel);
+  editor.appendChild(keyInput);
+  editor.appendChild(valueLabel);
+  editor.appendChild(valueInput);
+  
+  const buttonGroup = document.createElement('div');
+  buttonGroup.className = 'button-group';
+  buttonGroup.appendChild(saveBtn);
+  buttonGroup.appendChild(cancelBtn);
+  editor.appendChild(buttonGroup);
+
+  container.appendChild(editor);
+}
+
+// Helper functions for edit box
+function createLabel(text) {
+  const label = document.createElement('div');
+  label.className = 'edit-box-label';
+  label.textContent = text;
+  return label;
+}
+
+function createStyledTextarea(value = '', height = '80px') {
+  const textarea = document.createElement('textarea');
+  textarea.className = 'edit-box-textarea';
+  textarea.value = value;
+  textarea.style.height = height;
+  return textarea;
+}
+
+function createStyledInput(value = '', type = 'text') {
+  const input = document.createElement('input');
+  input.className = 'edit-box-input';
+  input.type = type;
+  input.value = value;
+  return input;
+}
+
+function createStyledSaveButton(text = 'Save') {
+  const btn = document.createElement('button');
+  btn.className = 'btn-save';
+  btn.textContent = text;
+  return btn;
+}
+
+function createStyledCancelButton(text = 'Cancel') {
+  const btn = document.createElement('button');
+  btn.className = 'btn-cancel';
+  btn.textContent = text;
+  return btn;
+}
+
+function createActionButton(options) {
+  const { classes = [], title = '', label = '', html = '', onClick } = options;
+  
+  const button = document.createElement('button');
+  button.className = ['small-btn', ...classes].join(' ');
+  if (title) button.title = title;
+  button.setAttribute('aria-label', title || label);
+  
+  if (html) {
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'action-icon';
+    iconSpan.innerHTML = html;
+    button.appendChild(iconSpan);
   }
   
-  if (message.action === 'localStorage') {
-    handleLocalStorageMessage(message);
-    return;
-  }
-
-  if (message.action === 'addFetchRequest') {
-    const fetchName = message.requestName; const fetchCode = message.fetchCode;
-    const newListItem = document.createElement('li'); const codeButton = document.createElement('a'); codeButton.textContent = fetchName; codeButton.addEventListener('click', () => { copyValueToClipboard(fetchCode); showSnackbar('Copied fetch code'); }); newListItem.appendChild(codeButton); fetchList.appendChild(newListItem);
-    return;
+  if (label) {
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = label;
+    button.appendChild(labelSpan);
   }
   
-  if (message.action === 'localStorage') {
-    handleLocalStorageMessage(message);
-    return;
+  if (onClick) {
+    button.addEventListener('click', onClick);
   }
+  
+  return button;
+}
 
-  if (message.action === 'newCapturedRequest') {
-    if (visibleState.fetchListVisible && message.request) prependCapturedRequestToUI(message.request);
-    return;
-  }
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-  if (message.action === 'replayResult') {
-    const res = message.result; 
-    const replayDiv = document.getElementById('replayResult'); 
-    if (!replayDiv) return;
-    
-    // Check if body exists and has content (not just whitespace)
-    const hasBody = res.body && res.body.trim().length > 0;
-    const bodyContent = hasBody ? escapeHtml(res.body).slice(0, 2000) : (res.error || 'No response body');
-    
-    // Build full details including response
-    let detailsContent = '';
-    if (res.requestInfo) {
-      detailsContent = `<details class="replay-request-details" open>
-        <summary>Request & Response Details</summary>
-        <div class="replay-details-content">
-          <div><strong>Method</strong>${escapeHtml(res.requestInfo.method)}</div>
-          <div class="replay-url"><strong>URL</strong>${escapeHtml(res.requestInfo.url)}</div>
-          ${res.requestInfo.body ? `<div><strong>Request Body</strong><pre class="replay-body-pre">${escapeHtml(String(res.requestInfo.body).slice(0, 500))}</pre></div>` : '<div><strong>Request Body</strong>None</div>'}
-          ${res.requestInfo.headers ? `<div><strong>Headers</strong><pre class="replay-headers-pre">${escapeHtml(JSON.stringify(res.requestInfo.headers, null, 2).slice(0, 500))}</pre></div>` : ''}
-          ${hasBody ? `<div><strong>Response Body</strong><pre class="replay-response-pre">${bodyContent}</pre></div>` : ''}
-          ${res.error ? `<div><strong>Error</strong>${escapeHtml(res.error)}</div>` : ''}
-        </div>
-      </details>`;
-    }
-    
-    replayDiv.textContent = ''; // Clear completely first
-    replayDiv.innerHTML = `<div class="replay-result-container"><div class="replay-result-header"><strong>Replay result for ${res.requestId}</strong>: ${res.status} ${res.statusText}</div>${detailsContent}</div>`;
-    showSnackbar(`Replay: ${res.status} ${res.statusText}`);
-    return;
-  }
+// Initialize popup when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
+  await dbReady;
+  console.log('DevMate popup initialized with all features');
 });
-
-chrome.action.setPopup({ popup: 'popup.html' });
-chrome.runtime.sendMessage({ action: 'contentScriptReady' });
- 
