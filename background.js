@@ -4,6 +4,7 @@ const manipulators = [
 ]
 
 const pendingRequests = new Map();
+const activePings = new Map(); // Map of pingId -> intervalId
 
 
 chrome.runtime.onMessage.addListener((request) => {
@@ -33,13 +34,42 @@ function saveCapturedRequest(record) {
 
 // Handle control messages: toggle capture, replay
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (!msg || !msg.action) return;
+  console.log('Background received message:', msg?.action);
+  
+  if (!msg || !msg.action) {
+    sendResponse({ ok: false, error: 'No action specified' });
+    return true;
+  }
 
   if (msg.action === 'toggleCapture') {
     chrome.storage.local.set({ captureEnabled: !!msg.enabled }, () => {
       sendResponse({ ok: true, enabled: !!msg.enabled });
     });
-    // return true to indicate we'll call sendResponse asynchronously
+    return true;
+  }
+
+  if (msg.action === 'startPing') {
+    console.log('Starting ping for:', msg.pingRequest?.name);
+    startPing(msg.pingRequest);
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  if (msg.action === 'stopPing') {
+    console.log('Stopping ping for ID:', msg.pingId);
+    stopPing(msg.pingId);
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  if (msg.action === 'executePing') {
+    console.log('Executing ping for:', msg.pingRequest?.name);
+    executePing(msg.pingRequest).then(result => {
+      sendResponse({ ok: true, result });
+    }).catch(error => {
+      console.error('Execute ping error:', error);
+      sendResponse({ ok: false, error: error.message });
+    });
     return true;
   }
 
@@ -224,3 +254,124 @@ chrome.webRequest.onBeforeRequest.addListener(
   { urls: ["<all_urls>"] },
   ["requestBody"]
 );
+
+// Ping functionality
+function startPing(pingRequest) {
+  if (!pingRequest || !pingRequest.id) {
+    console.error('Invalid ping request:', pingRequest);
+    return;
+  }
+  
+  if (activePings.has(pingRequest.id)) {
+    clearInterval(activePings.get(pingRequest.id));
+  }
+  
+  console.log(`Starting ping interval for ${pingRequest.name} every ${pingRequest.interval}s`);
+  
+  const intervalId = setInterval(async () => {
+    try {
+      const result = await executePing(pingRequest);
+      // Notify popup about ping result
+      chrome.runtime.sendMessage({
+        action: 'pingResult',
+        pingId: pingRequest.id,
+        result: result,
+        timestamp: Date.now()
+      }).catch(err => {
+        // Popup might not be open, this is fine
+        console.log('Could not send ping result to popup:', err.message);
+      });
+    } catch (error) {
+      console.error('Ping execution error:', error);
+      chrome.runtime.sendMessage({
+        action: 'pingResult',
+        pingId: pingRequest.id,
+        error: error.message,
+        timestamp: Date.now()
+      }).catch(err => {
+        console.log('Could not send ping error to popup:', err.message);
+      });
+    }
+  }, pingRequest.interval * 1000);
+  
+  activePings.set(pingRequest.id, intervalId);
+}
+
+function stopPing(pingId) {
+  if (!pingId) {
+    console.error('Invalid ping ID:', pingId);
+    return;
+  }
+  
+  if (activePings.has(pingId)) {
+    clearInterval(activePings.get(pingId));
+    activePings.delete(pingId);
+    console.log('Stopped ping for ID:', pingId);
+  }
+}
+
+async function executePing(pingRequest) {
+  const startTime = Date.now();
+  
+  try {
+    let headers = {};
+    if (pingRequest.headers) {
+      try {
+        headers = typeof pingRequest.headers === 'string' 
+          ? JSON.parse(pingRequest.headers) 
+          : pingRequest.headers;
+      } catch (e) {
+        console.warn('Invalid headers JSON:', pingRequest.headers);
+      }
+    }
+
+    const fetchOptions = {
+      method: pingRequest.method || 'GET',
+      headers: headers
+    };
+
+    if (pingRequest.body && (pingRequest.method === 'POST' || pingRequest.method === 'PUT')) {
+      fetchOptions.body = pingRequest.body;
+      if (!headers['Content-Type'] && !headers['content-type']) {
+        headers['Content-Type'] = 'application/json';
+      }
+    }
+
+    const response = await fetch(pingRequest.url, fetchOptions);
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+
+    let responseBody = '';
+    try {
+      responseBody = await response.text();
+      // Limit response body size to prevent memory issues
+      if (responseBody.length > 1000) {
+        responseBody = responseBody.substring(0, 1000) + '...';
+      }
+    } catch (e) {
+      responseBody = 'Could not read response body';
+    }
+
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      responseTime: responseTime,
+      body: responseBody,
+      headers: Object.fromEntries(response.headers.entries()),
+      timestamp: endTime
+    };
+  } catch (error) {
+    const endTime = Date.now();
+    const responseTime = endTime - startTime;
+    
+    return {
+      status: 0,
+      statusText: 'Network Error',
+      responseTime: responseTime,
+      body: '',
+      headers: {},
+      error: error.message,
+      timestamp: endTime
+    };
+  }
+}
