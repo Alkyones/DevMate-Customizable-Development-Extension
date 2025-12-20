@@ -1,5 +1,5 @@
 import { emptyDiv, copyValueToClipboard, checkLocalStorage, updateTable, generateUsername, generatePassword, generateEmail } from './functions.js';
-import { addLink, addCredential, getDataFromDB, addCapturedRequest, getCapturedRequests, removeCapturedRequest, updateCapturedRequest, dbReady, addSnippet, getSnippets, removeSnippet, updateSnippet } from './db.js';
+import { addLink, addCredential, getDataFromDB, addCapturedRequest, getCapturedRequests, removeCapturedRequest, updateCapturedRequest, dbReady, addSnippet, getSnippets, removeSnippet, updateSnippet, addPingRequest, getPingRequests, updatePingRequest, removePingRequest } from './db.js';
 
 // DOM refs
 const resultDiv = document.getElementById('result');
@@ -39,6 +39,17 @@ const snippetStatus = document.getElementById('snippetStatus');
 const sideMenuToggle = document.getElementById('sideMenuToggle');
 const sideMenu = document.getElementById('sideMenu');
 const popupContent = document.getElementById('popup-content');
+const pingerButton = document.getElementById('pingerButton');
+const pingerDiv = document.getElementById('pinger');
+const pingerNameInput = document.getElementById('pingerNameInput');
+const pingerMethodSelect = document.getElementById('pingerMethodSelect');
+const pingerUrlInput = document.getElementById('pingerUrlInput');
+const pingerHeadersInput = document.getElementById('pingerHeadersInput');
+const pingerBodyInput = document.getElementById('pingerBodyInput');
+const pingerIntervalInput = document.getElementById('pingerIntervalInput');
+const savePingerButton = document.getElementById('savePingerButton');
+const pingerStatus = document.getElementById('pingerStatus');
+const pingerList = document.getElementById('pingerList');
 
 // visible state for panels
 const visibleState = {
@@ -48,6 +59,7 @@ const visibleState = {
   fetchListVisible: false,
   generateCredentialsVisible: false,
   codeKeeperVisible: false,
+  pingerVisible: false,
 };
 
 // Helper: set button label without removing icon nodes
@@ -88,6 +100,7 @@ const panelMap = new Map([
   [showFetchesButton, { key: 'fetchListVisible', element: fetchListDiv }],
   [generateCredentialsButton, { key: 'generateCredentialsVisible', element: generateCredentialsDiv }],
   [codeKeeperButton, { key: 'codeKeeperVisible', element: codeKeeperDiv }],
+  [pingerButton, { key: 'pingerVisible', element: pingerDiv }],
 ]);
 
 // Side menu toggle: collapse/expand the left menu
@@ -149,6 +162,7 @@ async function toggleDisplay(button) {
   setButtonLabel(showFetchesButton, visibleState.fetchListVisible ? 'Hide Fetch Requests' : 'Show Fetch Requests');
   setButtonLabel(generateCredentialsButton, visibleState.generateCredentialsVisible ? 'Hide Credential Generator' : 'Show Credential Generator');
   setButtonLabel(codeKeeperButton, visibleState.codeKeeperVisible ? 'Hide Code Keeper' : 'Code Keeper');
+  setButtonLabel(pingerButton, visibleState.pingerVisible ? 'Hide Pinger' : 'Pinger');
 }
 
 // Snackbar for small transient messages
@@ -315,6 +329,249 @@ codeKeeperButton?.addEventListener('click', async () => {
     await loadSnippets();
   }
 });
+
+// ----------- Pinger handlers -----------
+let _editingPingerId = null;
+
+function renderPingItem(pingRequest) {
+  const item = document.createElement('li');
+  item.className = 'list-card';
+  item.dataset.id = pingRequest.id;
+  
+  const main = document.createElement('div');
+  main.className = 'item-main';
+  
+  const title = document.createElement('div');
+  title.style.fontWeight = '700';
+  title.style.fontSize = '13px';
+  title.textContent = pingRequest.name || 'Unnamed Request';
+  
+  const url = document.createElement('div');
+  url.style.fontSize = '12px';
+  url.style.color = 'var(--muted)';
+  url.textContent = `${pingRequest.method} ${pingRequest.url}`;
+  
+  const meta = document.createElement('div');
+  meta.className = 'item-meta';
+  const intervalText = `${pingRequest.interval}s interval`;
+  const statusText = pingRequest.isActive ? '🟢 Active' : '⭕ Inactive';
+  const lastPingText = pingRequest.lastPingAt ? ` | Last: ${new Date(pingRequest.lastPingAt).toLocaleTimeString()}` : '';
+  const statusInfo = pingRequest.lastStatus ? ` | Status: ${pingRequest.lastStatus}` : '';
+  meta.textContent = `${intervalText} | ${statusText}${lastPingText}${statusInfo}`;
+  
+  const actions = document.createElement('div');
+  actions.className = 'actions-inline';
+  
+  const pingBtn = createActionButton({
+    classes: ['replay'],
+    title: 'Execute ping now',
+    label: 'Ping',
+    html: '',
+    onClick: async () => {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage({
+            action: 'executePing',
+            pingRequest: pingRequest
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
+        
+        if (result.ok) {
+          showSnackbar(`Ping executed: ${result.result.status} (${result.result.responseTime}ms)`);
+          await updatePingRequest(pingRequest.id, {
+            lastPingAt: Date.now(),
+            lastStatus: result.result.status,
+            lastError: result.result.error || null,
+            pingCount: (pingRequest.pingCount || 0) + 1
+          });
+          await loadPingRequests();
+        } else {
+          showSnackbar(`Ping failed: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Ping execution error:', error);
+        showSnackbar(`Ping error: ${error.message}`);
+      }
+    }
+  });
+  
+  const toggleBtn = createActionButton({
+    classes: pingRequest.isActive ? ['delete'] : ['replay'],
+    title: pingRequest.isActive ? 'Stop pinging' : 'Start pinging',
+    label: pingRequest.isActive ? 'Stop' : 'Start',
+    html: '',
+    onClick: async () => {
+      try {
+        const messageAction = pingRequest.isActive ? 'stopPing' : 'startPing';
+        const messageData = pingRequest.isActive 
+          ? { action: 'stopPing', pingId: pingRequest.id }
+          : { action: 'startPing', pingRequest: pingRequest };
+          
+        const result = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(messageData, (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(response);
+            }
+          });
+        });
+        
+        if (pingRequest.isActive) {
+          await updatePingRequest(pingRequest.id, { isActive: false });
+          showSnackbar('Ping stopped');
+        } else {
+          await updatePingRequest(pingRequest.id, { isActive: true });
+          showSnackbar('Ping started');
+        }
+        await loadPingRequests();
+      } catch (error) {
+        console.error('Toggle ping error:', error);
+        showSnackbar(`Error: ${error.message}`);
+      }
+    }
+  });
+  
+  const editBtn = createActionButton({
+    classes: ['edit'],
+    title: 'Edit ping request',
+    label: 'Edit',
+    html: '',
+    onClick: () => {
+      _editingPingerId = pingRequest.id;
+      pingerNameInput.value = pingRequest.name || '';
+      pingerMethodSelect.value = pingRequest.method || 'GET';
+      pingerUrlInput.value = pingRequest.url || '';
+      pingerHeadersInput.value = pingRequest.headers || '';
+      pingerBodyInput.value = pingRequest.body || '';
+      pingerIntervalInput.value = pingRequest.interval || 60;
+      pingerStatus.textContent = 'Editing...';
+    }
+  });
+  
+  const delBtn = createActionButton({
+    classes: ['delete'],
+    title: 'Delete ping request',
+    label: 'Delete',
+    html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>`,
+    onClick: async () => {
+      // Stop ping if active
+      if (pingRequest.isActive) {
+        await chrome.runtime.sendMessage({ action: 'stopPing', pingId: pingRequest.id });
+      }
+      await removePingRequest(pingRequest.id);
+      await loadPingRequests();
+      showSnackbar('Ping request deleted');
+    }
+  });
+  
+  actions.appendChild(pingBtn);
+  actions.appendChild(toggleBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+  
+  main.appendChild(title);
+  main.appendChild(url);
+  main.appendChild(meta);
+  
+  item.appendChild(main);
+  item.appendChild(actions);
+  
+  return item;
+}
+
+async function loadPingRequests() {
+  emptyDiv(pingerList);
+  const items = await getPingRequests();
+  (items || []).forEach(p => pingerList.appendChild(renderPingItem(p)));
+}
+
+savePingerButton?.addEventListener('click', async () => {
+  await dbReady;
+  const name = (pingerNameInput?.value || '').trim();
+  const method = pingerMethodSelect?.value || 'GET';
+  const url = (pingerUrlInput?.value || '').trim();
+  const headers = (pingerHeadersInput?.value || '').trim();
+  const body = (pingerBodyInput?.value || '').trim();
+  const interval = parseInt(pingerIntervalInput?.value) || 60;
+  
+  if (!name || !url) {
+    alert('Please enter a name and URL for the ping request.');
+    return;
+  }
+  
+  if (interval < 1 || interval > 3600) {
+    alert('Interval must be between 1 and 3600 seconds.');
+    return;
+  }
+  
+  // Validate URL format
+  try {
+    new URL(url);
+  } catch (e) {
+    alert('Please enter a valid URL.');
+    return;
+  }
+  
+  // Validate headers JSON if provided
+  if (headers) {
+    try {
+      JSON.parse(headers);
+    } catch (e) {
+      alert('Headers must be valid JSON format.');
+      return;
+    }
+  }
+  
+  const pingData = {
+    name: name,
+    method: method,
+    url: url,
+    headers: headers,
+    body: body,
+    interval: interval
+  };
+  
+  if (_editingPingerId) {
+    await updatePingRequest(_editingPingerId, pingData);
+    pingerStatus.textContent = 'Ping request updated';
+    _editingPingerId = null;
+  } else {
+    const id = await addPingRequest(pingData);
+    if (id) {
+      pingerStatus.textContent = 'Ping request saved';
+    } else {
+      pingerStatus.textContent = 'Error saving ping request';
+    }
+  }
+  
+  // Clear form
+  pingerNameInput.value = '';
+  pingerMethodSelect.value = 'GET';
+  pingerUrlInput.value = '';
+  pingerHeadersInput.value = '';
+  pingerBodyInput.value = '';
+  pingerIntervalInput.value = '60';
+  
+  setTimeout(() => { pingerStatus.textContent = ''; }, 2000);
+  await loadPingRequests();
+});
+
+pingerButton?.addEventListener('click', async () => {
+  await dbReady;
+  await toggleDisplay(pingerButton);
+  if (visibleState.pingerVisible) {
+    await loadPingRequests();
+  }
+});
+
+
 
 captureToggle?.addEventListener('change', () => {
   const enabled = !!captureToggle.checked;
@@ -674,6 +931,25 @@ function createLocalStorageListItem(key, value) {
 chrome.runtime.onMessage.addListener((message) => {
   if (!message || !message.action) return;
   
+  if (message.action === 'pingResult') {
+    (async () => {
+      try {
+        await updatePingRequest(message.pingId, {
+          lastPingAt: message.timestamp,
+          lastStatus: message.result?.status || 0,
+          lastError: message.error || null,
+          pingCount: (await getPingRequests()).find(p => p.id === message.pingId)?.pingCount + 1 || 1
+        });
+        if (visibleState.pingerVisible) {
+          await loadPingRequests();
+        }
+      } catch (error) {
+        console.error('Error handling ping result:', error);
+      }
+    })();
+    return;
+  }
+  
   if (message.action === 'localStorage') {
     handleLocalStorageMessage(message);
     return;
@@ -682,6 +958,11 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message.action === 'addFetchRequest') {
     const fetchName = message.requestName; const fetchCode = message.fetchCode;
     const newListItem = document.createElement('li'); const codeButton = document.createElement('a'); codeButton.textContent = fetchName; codeButton.addEventListener('click', () => { copyValueToClipboard(fetchCode); showSnackbar('Copied fetch code'); }); newListItem.appendChild(codeButton); fetchList.appendChild(newListItem);
+    return;
+  }
+  
+  if (message.action === 'localStorage') {
+    handleLocalStorageMessage(message);
     return;
   }
 

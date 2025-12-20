@@ -40,6 +40,10 @@
         <button id="codeKeeperButton"><span class="btn-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg>
         </span><span class="btn-label">Code Keeper</span></button>
+
+        <button id="pingerButton"><span class="btn-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </span><span class="btn-label">Pinger</span></button>
       </div>
     </aside>
 
@@ -97,6 +101,34 @@
       <div id="snippetStatus" style="color:var(--muted);font-size:12px"></div>
     </div>
     <ul id="codeSnippetList"></ul>
+  </div>
+  <div id="pinger" class="input-container" hidden>
+    <div class="input-row">
+      <input type="text" placeholder="Request name" id="pingerNameInput" style="flex: 1;">
+      <select id="pingerMethodSelect" style="flex: 0 0 80px; margin: 0 4px;">
+        <option value="GET">GET</option>
+        <option value="POST">POST</option>
+        <option value="PUT">PUT</option>
+        <option value="DELETE">DELETE</option>
+      </select>
+    </div>
+    <div class="input-row">
+      <input type="url" placeholder="Request URL" id="pingerUrlInput" style="flex: 1;">
+    </div>
+    <div class="input-row">
+      <textarea id="pingerHeadersInput" placeholder="Headers (JSON format, e.g. {\"Content-Type\": \"application/json\"})" style="width:100%;height:60px;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;resize:vertical"></textarea>
+    </div>
+    <div class="input-row">
+      <textarea id="pingerBodyInput" placeholder="Request body (for POST/PUT requests)" style="width:100%;height:80px;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;resize:vertical"></textarea>
+    </div>
+    <div class="input-row">
+      <input type="number" placeholder="Interval (seconds)" id="pingerIntervalInput" min="1" max="3600" value="60" style="flex: 0 0 120px; margin-right: 8px;">
+      <button id="savePingerButton" style="flex: 1;"><span class="action-icon" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
+        </span>Save Pinger</button>
+    </div>
+    <div id="pingerStatus" style="color:var(--muted);font-size:12px;margin-top:8px"></div>
+    <ul id="pingerList"></ul>
   </div>
   <div id="fetch-requests" hidden>
     <div class="capture-controls">

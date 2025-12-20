@@ -9,7 +9,7 @@ let dbReadyResolve;
 const dbReady = new Promise((resolve) => { dbReadyResolve = resolve; });
 
 // Open (or create) the database
-const request = indexedDB.open("DevToolsDB", 3);
+const request = indexedDB.open("DevToolsDB", 4);
 
 request.onerror = (event) => {
   console.warn("Database open failed. Some features may not work.");
@@ -31,6 +31,9 @@ request.onupgradeneeded = (event) => {
   }
   if (!db.objectStoreNames.contains("credentials")) {
     db.createObjectStore("credentials", { keyPath: 'key' });
+  }
+  if (!db.objectStoreNames.contains("pingRequests")) {
+    db.createObjectStore("pingRequests", { keyPath: 'id', autoIncrement: true });
   }
 };
 
@@ -259,4 +262,84 @@ export async function updateSnippet(id, newObj) {
       chrome.storage.local.set({ codeKeeper: arr }, () => resolve(true));
     });
   });
+}
+
+/**
+ * Add a new ping request
+ * @param {Object} pingData - The ping request data
+ * @returns {Promise<number|null>} - The ID of the created ping request
+ */
+export async function addPingRequest(pingData) {
+  if (!db) return null;
+  try {
+    const tx = db.transaction("pingRequests", "readwrite");
+    const store = tx.objectStore("pingRequests");
+    const req = store.add({
+      ...pingData,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isActive: false,
+      lastPingAt: null,
+      pingCount: 0,
+      lastStatus: null,
+      lastError: null
+    });
+    const result = await promisifyRequest(req);
+    return result;
+  } catch (e) {
+    console.error('addPingRequest error', e);
+    return null;
+  }
+}
+
+/**
+ * Get all ping requests
+ * @returns {Promise<array|null>}
+ */
+export async function getPingRequests() {
+  return await getDataFromDB('pingRequests');
+}
+
+/**
+ * Update a ping request
+ * @param {number} id
+ * @param {Object} updateData
+ * @returns {Promise<boolean>}
+ */
+export async function updatePingRequest(id, updateData) {
+  if (!db) return false;
+  try {
+    const tx = db.transaction("pingRequests", "readwrite");
+    const store = tx.objectStore("pingRequests");
+    const getReq = store.get(id);
+    const existing = await promisifyRequest(getReq);
+    if (!existing) return false;
+    
+    const updated = { ...existing, ...updateData, updatedAt: Date.now() };
+    const putReq = store.put(updated);
+    await promisifyRequest(putReq);
+    return true;
+  } catch (e) {
+    console.error('updatePingRequest error', e);
+    return false;
+  }
+}
+
+/**
+ * Remove a ping request
+ * @param {number} id
+ * @returns {Promise<boolean>}
+ */
+export async function removePingRequest(id) {
+  if (!db) return false;
+  try {
+    const tx = db.transaction("pingRequests", "readwrite");
+    const store = tx.objectStore("pingRequests");
+    const req = store.delete(id);
+    await promisifyRequest(req);
+    return true;
+  } catch (e) {
+    console.error('removePingRequest error', e);
+    return false;
+  }
 }
