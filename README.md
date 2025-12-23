@@ -10,6 +10,7 @@ This repository contains the extension source used for local development and pac
 - Capture, inspect, modify, and replay Fetch requests recorded in the page context.
 - Manage a set of useful links (persisted using IndexedDB) for fast navigation.
 - Save and reuse credentials (username, password, email generation helper) for testing.
+- Monitor HTTP endpoints with scheduled ping requests and real-time status tracking.
 - Clean, compact popup UI intended for rapid developer access.
 
 ## Installation (Developer / Local)
@@ -29,6 +30,7 @@ Notes:
 - Useful Links: Add and manage quick links persisted in IndexedDB.
 - Fetch Inspector: Capture outgoing fetch requests; inspect headers/body, modify and replay.
 - Credentials: Save, generate, and copy test credentials for rapid form filling.
+- Pinger: Monitor HTTP endpoints with scheduled requests, track response times and status codes.
 
 Screenshots and examples are available in the `assets/` folder.
 
@@ -41,10 +43,24 @@ Screenshots and examples are available in the `assets/` folder.
 - Source files of interest:
   - `popup.html` — extension popup markup.
   - `css/link.css` — main popup stylesheet (recent UI fixes applied here).
-  - `scripts/` — contains `popup.js` and helper modules.
+  - `scripts/` — modular JavaScript architecture:
+    - `popup.js` — main popup controller and initialization.
+    - `db.js` — IndexedDB operations and data persistence.
+    - `functions.js` — shared utility functions.
+    - `features/` — individual feature modules (local-storage, fetch-capture, credentials, pinger, useful-links, etc.).
+    - `ui/` — reusable UI components (dom-utils, panel-manager, snackbar).
+    - `config/` — application constants and configuration.
+  - `background.js` — service worker for background operations and ping scheduling.
+  - `manifest.json` — extension configuration and permissions.
 - To test UI/CSS changes, update the files in this repository, reload the extension in chrome://extensions, and re-open the popup.
 
 ## Changelog
+
+- v1.4.0 — 2025-12-23
+  - Feature: CRUD with User credentials that allows user to fetch requests or access URLs with their security credentials.
+  - Feature: Pinger tool for monitoring HTTP endpoints with scheduled ping requests, response time tracking, and status monitoring.
+  - Architecture: Modular code organization with separate directories for features, UI components, and configuration files.
+  - Documentation: Added privacy policy documentation.
 
 - v1.1.0 — 2025-10-31
   - UI: Toolbar buttons now render with consistent height for a more even appearance.
@@ -73,7 +89,7 @@ For questions or issues, open an issue in the repository or reach out to the mai
 
 ---
 
-Revision: v1.1.0 — updated 2025-10-31
+Revision: v1.4.0 — updated 2025-12-23
 # DevMate Customizable Development Extension
 Multi-Browser extension for developers.
 - Multi browser support (Chrome Native)
@@ -98,7 +114,6 @@ What's new in this release:
 # Upcoming Releases
 - Postman integration that allows user fetches and requests to insert specific workspace after manipulation.
 - Desktop release.
-- CRUD with User credentials that allows user to fetch requests or access URLs with their security credentials.
 
 # Local Storage Access
 -Main goal is to provide developers quick access to local storage and allow them to modify the environment according to requirements.
