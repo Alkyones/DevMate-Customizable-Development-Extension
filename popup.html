@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DevMate</title>
+  <title>DevMate AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" type="text/css" href="css/link.css">
 </head>
 <body>
@@ -12,30 +15,30 @@
     <button id="sideMenuToggle" class="side-toggle" title="Hide" aria-label="Toggle side menu">
       <svg class="hamburger-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="17" x2="21" y2="17" /></svg>
     </button>
-    <div class="top-title"><h2 class="devmate-title">DevMate</h2></div>
+    <div class="top-title"><h2 class="devmate-title">DevMate AI</h2></div>
   </div>
   <div class="popup-layout">
     <aside class="side-menu" id="sideMenu">
   <div class="button-container">
         <button id="checkButton"><span class="btn-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/></svg>
-        </span><span class="btn-label">Check Local Storage</span></button>
+        </span><span class="btn-label">Local Storage</span></button>
 
         <button id="showLinksButton"><span class="btn-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M10 14a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L9.93 6.93"/><path d="M14 10a5 5 0 00-7.07 0L5.52 11.41a5 5 0 007.07 7.07L14 16.07"/></svg>
-        </span><span class="btn-label">Show Useful Links</span></button>
+        </span><span class="btn-label">Useful Links</span></button>
 
         <button id="fetchesButton"><span class="btn-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v6"/><path d="M12 16v6"/><path d="M5 7l7 5 7-5"/></svg>
-        </span><span class="btn-label">Show Fetches</span></button>
+        </span><span class="btn-label">Fetches</span></button>
 
         <button id="credentialsButton"><span class="btn-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </span><span class="btn-label">Show Credentials</span></button>
+        </span><span class="btn-label">Credentials</span></button>
 
         <button id="generateCredentialsButton"><span class="btn-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M2 22l4-4"/></svg>
-        </span><span class="btn-label">Generate Credentials</span></button>
+        </span><span class="btn-label">Generator</span></button>
 
         <button id="codeKeeperButton"><span class="btn-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg>
@@ -50,62 +53,59 @@
     <main class="main-content">
   <div id="links" class= 'input-container' hidden>
     <div class="input-row">
-      <input type="text" placeholder="Enter link name" id="linkKeyInput">
-      <input type="text" placeholder="Enter link" id="linkValueInput">
+      <input type="text" placeholder="Link name" id="linkKeyInput">
+      <input type="text" placeholder="Link URL" id="linkValueInput">
       <button id="saveLinkButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L9.93 6.93"/><path d="M14 10a5 5 0 00-7.07 0L5.52 11.41a5 5 0 007.07 7.07L14 16.07"/></svg>
         </span>Add Link</button>
       <button id="saveCurrentLinkButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-        </span>Add Current Link</button>
+        </span>Save Current</button>
     </div>
     <ul id="usefulLinks"></ul>
   </div>
-  <div id="credentials" class= 'input-container' hidden>
+  <div id="credentials" class="input-container" hidden>
     <div class="input-row">
-      <input type="text" placeholder="Enter website" id="credentialsWebsiteInput">
-      <input type="text" placeholder="Enter username" id="credentialsKeyInput">
-      <input type="text" placeholder="Enter password" id="credentialsValueInput">
+      <input type="text" placeholder="Website" id="credentialsWebsiteInput">
+      <input type="text" placeholder="Username" id="credentialsKeyInput">
+      <input type="text" placeholder="Password" id="credentialsValueInput">
       <button id="saveCredentialButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </span>Save Value</button>
+        </span>Save</button>
     </div>
     <ul id="credentialsList"></ul>
   </div>
-  <!-- Credential generator is a separate sibling panel so it does not get
-       unexpectedly shown when other panels are toggled. It is placed after
-       credentials so it appears visually below the credentials inputs. -->
-  <div id="generate-credentials" class= 'input-container' hidden>
+  <div id="generate-credentials" class="input-container" hidden>
       <div class="input-row">
       <button id="generateUsernameButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </span>Generate Username</button>
+        </span>Username</button>
       <button id="generatePasswordButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-7 7"/><circle cx="7" cy="14" r="3"/><path d="M10 14h11"/></svg>
-        </span>Generate Password</button>
+        </span>Password</button>
       <button id="generateEmailButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9 6 9-6"/><path d="M21 19H3V5h18z"/></svg>
-        </span>Generate Email</button>
+        </span>Email</button>
     </div>
     <div id="generatedResult"></div>
   </div>
   <div id="code-keeper" class="input-container" hidden>
     <input type="text" placeholder="Snippet title" id="codeTitleInput">
-    <div style="margin-top:8px;">
-      <textarea id="codeTextarea" placeholder="Paste code here" style="width:100%;height:160px;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;resize:vertical"></textarea>
+    <div class="code-keeper-textarea-wrapper">
+      <textarea id="codeTextarea" placeholder="Paste your code snippet here..."></textarea>
     </div>
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+    <div class="code-keeper-actions">
       <button id="saveSnippetButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
         </span>Save Snippet</button>
-      <div id="snippetStatus" style="color:var(--muted);font-size:12px"></div>
+      <div id="snippetStatus"></div>
     </div>
     <ul id="codeSnippetList"></ul>
   </div>
   <div id="pinger" class="input-container" hidden>
     <div class="input-row">
-      <input type="text" placeholder="Request name" id="pingerNameInput" style="flex: 1;">
-      <select id="pingerMethodSelect" style="flex: 0 0 80px; margin: 0 4px;">
+      <input type="text" placeholder="Request name" id="pingerNameInput">
+      <select id="pingerMethodSelect">
         <option value="GET">GET</option>
         <option value="POST">POST</option>
         <option value="PUT">PUT</option>
@@ -113,21 +113,21 @@
       </select>
     </div>
     <div class="input-row">
-      <input type="url" placeholder="Request URL" id="pingerUrlInput" style="flex: 1;">
+      <input type="url" placeholder="Request URL" id="pingerUrlInput">
     </div>
     <div class="input-row">
-      <textarea id="pingerHeadersInput" placeholder="Headers (JSON format, e.g. {\"Content-Type\": \"application/json\"})" style="width:100%;height:60px;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;resize:vertical"></textarea>
+      <textarea id="pingerHeadersInput" placeholder='Headers (JSON format, e.g. {"Content-Type": "application/json"})'></textarea>
     </div>
     <div class="input-row">
-      <textarea id="pingerBodyInput" placeholder="Request body (for POST/PUT requests)" style="width:100%;height:80px;border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;resize:vertical"></textarea>
+      <textarea id="pingerBodyInput" placeholder="Request body (for POST/PUT requests)"></textarea>
     </div>
     <div class="input-row">
-      <input type="number" placeholder="Interval (seconds)" id="pingerIntervalInput" min="1" max="3600" value="60" style="flex: 0 0 120px; margin-right: 8px;">
-      <button id="savePingerButton" style="flex: 1;"><span class="action-icon" aria-hidden>
+      <input type="number" placeholder="Interval (sec)" id="pingerIntervalInput" min="1" max="3600" value="60">
+      <button id="savePingerButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
         </span>Save Pinger</button>
     </div>
-    <div id="pingerStatus" style="color:var(--muted);font-size:12px;margin-top:8px"></div>
+    <div id="pingerStatus"></div>
     <ul id="pingerList"></ul>
   </div>
   <div id="fetch-requests" hidden>
@@ -135,7 +135,7 @@
       <label><input type="checkbox" id="captureToggle"> Capture requests</label>
       <button id="clearCapturedButton"><span class="action-icon" aria-hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6v12"/><path d="M16 6v12"/><path d="M10 2h4l1 4H9z"/></svg>
-        </span>Clear Captured</button>
+        </span>Clear</button>
     </div>
     <ul id="fetchRequestList"></ul>
     <div id="replayResult"></div>
