@@ -633,6 +633,43 @@ body.side-collapsed .devmate-title {
   flex-wrap: nowrap;
 }
 
+/* Credential Card Styling */
+.credential-card .item-main {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.credential-website {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.credential-website:hover {
+  color: var(--accent-solid);
+}
+
+.credential-username {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Autofill button - special accent style */
+.small-btn.autofill {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: var(--shadow-md), 0 4px 16px rgba(16, 185, 129, 0.3);
+}
+
+.small-btn.autofill:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 8px 24px rgba(16, 185, 129, 0.4);
+}
+
 /* Base Input Styles */
 .input-row input[type="text"],
 .input-row input[type="password"],

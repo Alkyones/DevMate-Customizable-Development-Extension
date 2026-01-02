@@ -4,11 +4,18 @@
   "short_name": "DevMate AI",
   "version": "2.0",
   "description": "AI-powered developer toolkit - Local storage viewer, credential manager, code keeper, API pinger, and more.",
-  "permissions": ["activeTab", "scripting", "webRequest", "storage"],
+  "permissions": ["activeTab", "scripting", "webRequest", "storage", "contextMenus"],
   "host_permissions": ["*://*/*"],
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["scripts/content/autofill.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "web_accessible_resources": [
     {
       "resources": [

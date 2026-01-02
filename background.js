@@ -7,6 +7,142 @@ const pendingRequests = new Map();
 const savedRequests = new Map(); // Map of requestId -> saved record (to update with status)
 const activePings = new Map(); // Map of pingId -> intervalId
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Context Menu for Autofill
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Create context menu on install/update
+chrome.runtime.onInstalled.addListener(() => {
+  setupContextMenu();
+  rebuildCredentialMenuItems();
+});
+
+// Also setup on startup
+chrome.runtime.onStartup?.addListener(() => {
+  setupContextMenu();
+  rebuildCredentialMenuItems();
+});
+
+function setupContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'devmate-autofill-parent',
+      title: 'DevMate AI - Fill Credentials',
+      contexts: ['editable']
+    });
+  });
+}
+
+// Rebuild menu items when credentials change
+async function rebuildCredentialMenuItems() {
+  const credentials = await getCredentialsFromStorage();
+  
+  // Remove all and recreate
+  chrome.contextMenus.removeAll(() => {
+    // Parent menu
+    chrome.contextMenus.create({
+      id: 'devmate-autofill-parent',
+      title: 'DevMate AI - Fill Credentials',
+      contexts: ['editable']
+    });
+    
+    if (!credentials || credentials.length === 0) {
+      chrome.contextMenus.create({
+        id: 'devmate-no-creds',
+        parentId: 'devmate-autofill-parent',
+        title: 'No credentials saved',
+        enabled: false,
+        contexts: ['editable']
+      });
+      return;
+    }
+    
+    // Add credentials (max 15 for menu performance)
+    credentials.slice(0, 15).forEach((cred, index) => {
+      chrome.contextMenus.create({
+        id: `devmate-cred-${index}`,
+        parentId: 'devmate-autofill-parent',
+        title: `${cred.website || 'Unknown'} (${cred.key || 'no user'})`,
+        contexts: ['editable']
+      });
+    });
+  });
+}
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const menuId = info.menuItemId.toString();
+  if (!menuId.startsWith('devmate-cred-')) return;
+  
+  const index = parseInt(menuId.replace('devmate-cred-', ''));
+  if (isNaN(index)) return;
+  
+  const credentials = await getCredentialsFromStorage();
+  const cred = credentials[index];
+  
+  if (!cred || !tab?.id) return;
+  
+  const username = cred.key || '';
+  const password = cred.value || '';
+  
+  try {
+    // Ensure content script is injected (may already exist)
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['scripts/content/autofill.js']
+    }).catch(() => {});
+    
+    // Send autofill message
+    await chrome.tabs.sendMessage(tab.id, {
+      action: 'autofillCredentials',
+      username,
+      password
+    });
+  } catch (err) {
+    // Fallback: direct script injection
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: fillLoginForm,
+      args: [username, password]
+    }).catch(() => {});
+  }
+});
+
+// Fallback fill function injected directly into page
+function fillLoginForm(username, password) {
+  const passField = document.querySelector('input[type="password"]');
+  const userField = document.querySelector(
+    'input[type="email"], input[name="username"], input[name="email"], ' +
+    'input[type="text"][name*="user"], input[type="text"][name*="email"]'
+  );
+  
+  const fill = (field, value) => {
+    if (!field) return;
+    field.value = value;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    field.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  
+  fill(userField, username);
+  fill(passField, password);
+}
+
+// Helper to get credentials from storage
+async function getCredentialsFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get({ credentialsCache: [] }, (items) => {
+      resolve(items.credentialsCache || []);
+    });
+  });
+}
+
+// Listen for credential cache updates to rebuild menu
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local' && changes.credentialsCache) {
+    rebuildCredentialMenuItems();
+  }
+});
+
 
 chrome.runtime.onMessage.addListener((request) => {
   console.log(request, "request");

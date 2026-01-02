@@ -361,5 +361,12 @@ function escapeHtml(str) {
 // Initialize popup when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
   await dbReady;
-  console.log('DevMate popup initialized with all features');
+  
+  // Cache credentials for context menu on popup load
+  try {
+    const credentials = await getDataFromDB('credentials');
+    await chrome.storage.local.set({ credentialsCache: credentials || [] });
+  } catch (e) {
+    // Credentials will be cached when user opens Credentials panel
+  }
 });
