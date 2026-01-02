@@ -27,6 +27,43 @@ export class FetchCaptureFeature {
     this.showFetchesButton?.addEventListener('click', () => this.handleShowFetches());
     this.captureToggle?.addEventListener('change', () => this.handleCaptureToggle());
     this.clearCapturedButton?.addEventListener('click', () => this.handleClearCaptured());
+    
+    // Listen for status updates from background
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (msg.action === 'updateCapturedRequestStatus') {
+        this.updateRequestStatus(msg.requestId, msg.status, msg.statusText);
+      }
+    });
+  }
+
+  // Update status badge for a specific request in the UI
+  updateRequestStatus(requestId, status, statusText) {
+    const listItem = this.fetchList?.querySelector(`li[data-request-id]`);
+    if (!listItem) return;
+    
+    // Find all items and check their stored requestId
+    const items = this.fetchList.querySelectorAll('li.fetch-item');
+    items.forEach(item => {
+      const infoContainer = item.querySelector('.request-info');
+      if (!infoContainer) return;
+      
+      // Check if this item already has a status badge
+      let statusBadge = infoContainer.querySelector('.request-status');
+      if (!statusBadge) {
+        statusBadge = document.createElement('div');
+        statusBadge.className = 'request-status';
+        infoContainer.appendChild(statusBadge);
+      }
+      
+      // Update only if this is a recent item without status
+      if (!statusBadge.textContent && status) {
+        statusBadge.textContent = status;
+        statusBadge.classList.remove('status-success', 'status-redirect', 'status-error');
+        if (status >= 200 && status < 300) statusBadge.classList.add('status-success');
+        else if (status >= 300 && status < 400) statusBadge.classList.add('status-redirect');
+        else if (status >= 400 || status === 0) statusBadge.classList.add('status-error');
+      }
+    });
   }
 
   async handleShowFetches() {
@@ -67,18 +104,67 @@ export class FetchCaptureFeature {
     const newListItem = document.createElement('li');
     newListItem.classList.add('fetch-item');
     newListItem.dataset.requestId = r.id;
+    
+    // Add method-based class for left border accent
+    const methodLower = (r.method || 'GET').toLowerCase();
+    newListItem.classList.add(`method-${methodLower}`);
+    
+    // Add status-based class if available
+    if (r.status) {
+      if (r.status >= 200 && r.status < 300) newListItem.classList.add('status-success');
+      else if (r.status >= 400) newListItem.classList.add('status-error');
+      else if (r.status >= 300) newListItem.classList.add('status-redirect');
+    }
 
     const meta = document.createElement('div'); 
     meta.className = 'request-meta';
+    
     const methodBadge = document.createElement('div'); 
-    methodBadge.className = 'request-method'; 
+    methodBadge.className = `request-method method-${methodLower}`; 
     methodBadge.textContent = r.method;
-    const urlSpan = document.createElement('div'); 
-    urlSpan.className = 'request-url'; 
-    urlSpan.title = r.url; 
-    urlSpan.textContent = `${r.url} (${new Date(r.timestamp).toLocaleTimeString()})`;
+    
+    // Parse URL for better display
+    const urlContainer = document.createElement('div');
+    urlContainer.className = 'request-url-container';
+    urlContainer.title = r.url;
+    
+    const { domain, path } = this.parseUrl(r.url);
+    
+    const domainSpan = document.createElement('span');
+    domainSpan.className = 'request-domain';
+    domainSpan.textContent = domain;
+    
+    const pathSpan = document.createElement('span');
+    pathSpan.className = 'request-path';
+    pathSpan.textContent = path;
+    
+    urlContainer.appendChild(domainSpan);
+    urlContainer.appendChild(pathSpan);
+    
+    // Info container for timestamp and status
+    const infoContainer = document.createElement('div');
+    infoContainer.className = 'request-info';
+    
+    // Timestamp badge
+    const timestampBadge = document.createElement('div');
+    timestampBadge.className = 'request-timestamp';
+    timestampBadge.textContent = new Date(r.timestamp).toLocaleTimeString();
+    infoContainer.appendChild(timestampBadge);
+    
+    // Status badge
+    if (r.status) {
+      const statusBadge = document.createElement('div');
+      statusBadge.className = 'request-status';
+      if (r.status >= 200 && r.status < 300) statusBadge.classList.add('status-success');
+      else if (r.status >= 300 && r.status < 400) statusBadge.classList.add('status-redirect');
+      else if (r.status >= 400) statusBadge.classList.add('status-error');
+      statusBadge.textContent = r.status;
+      infoContainer.appendChild(statusBadge);
+    }
+    
     meta.appendChild(methodBadge); 
-    meta.appendChild(urlSpan);
+    meta.appendChild(urlContainer);
+    meta.appendChild(infoContainer);
 
     const actions = document.createElement('div'); 
     actions.className = 'request-actions';
@@ -239,5 +325,17 @@ export class FetchCaptureFeature {
     btn.className = 'btn-cancel';
     btn.textContent = text;
     return btn;
+  }
+
+  // Parse URL into domain and path
+  parseUrl(url) {
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace(/^www\./, '');
+      const path = urlObj.pathname + urlObj.search;
+      return { domain, path: path.length > 50 ? path.substring(0, 47) + '...' : path };
+    } catch {
+      return { domain: url, path: '' };
+    }
   }
 }

@@ -4,6 +4,7 @@ const manipulators = [
 ]
 
 const pendingRequests = new Map();
+const savedRequests = new Map(); // Map of requestId -> saved record (to update with status)
 const activePings = new Map(); // Map of pingId -> intervalId
 
 
@@ -29,6 +30,25 @@ function saveCapturedRequest(record) {
     // keep a reasonable cap
     const capped = arr.slice(0, 200);
     chrome.storage.local.set({ capturedRequests: capped });
+  });
+}
+
+function updateCapturedRequestStatus(requestId, status, statusText) {
+  chrome.storage.local.get({ capturedRequests: [] }, (items) => {
+    const arr = items.capturedRequests || [];
+    const idx = arr.findIndex(r => r.requestId === requestId);
+    if (idx !== -1) {
+      arr[idx].status = status;
+      arr[idx].statusText = statusText;
+      chrome.storage.local.set({ capturedRequests: arr });
+      // Notify popup about the status update
+      chrome.runtime.sendMessage({ 
+        action: 'updateCapturedRequestStatus', 
+        requestId, 
+        status, 
+        statusText 
+      }).catch(() => {});
+    }
   });
 }
 
@@ -265,6 +285,28 @@ chrome.webRequest.onBeforeRequest.addListener(
   },
   { urls: ["<all_urls>"] },
   ["requestBody"]
+);
+
+// Listen for completed requests to capture status code
+chrome.webRequest.onCompleted.addListener(
+  async (details) => {
+    const capture = await isCaptureEnabled();
+    if (capture && details.statusCode) {
+      updateCapturedRequestStatus(details.requestId, details.statusCode, details.statusLine);
+    }
+  },
+  { urls: ["<all_urls>"] }
+);
+
+// Listen for errors to mark failed requests
+chrome.webRequest.onErrorOccurred.addListener(
+  async (details) => {
+    const capture = await isCaptureEnabled();
+    if (capture) {
+      updateCapturedRequestStatus(details.requestId, 0, details.error || 'Error');
+    }
+  },
+  { urls: ["<all_urls>"] }
 );
 
 // Ping functionality
