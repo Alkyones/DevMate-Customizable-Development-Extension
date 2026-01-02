@@ -3,6 +3,10 @@
  * Handles credential autofill on web pages
  */
 
+// Guard against multiple injections
+if (typeof window.__devmateAutofillLoaded === 'undefined') {
+  window.__devmateAutofillLoaded = true;
+
 // Track the last focused/right-clicked element
 let lastFocusedElement = null;
 
@@ -187,3 +191,5 @@ function isVisible(element) {
          style.opacity !== '0' &&
          element.offsetParent !== null;
 }
+
+} // End of injection guard

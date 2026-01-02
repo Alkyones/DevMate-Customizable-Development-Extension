@@ -7,6 +7,45 @@ import { CONFIG, PANEL_KEYS } from '../config/constants.js';
 import { pick } from '../ui/dom-utils.js';
 import { showSnackbar } from '../ui/snackbar.js';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Standalone generator functions (exported for use in background.js)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Generate a semi-random username (adjective + animal + number)
+ * @returns {string}
+ */
+export function generateUsername() {
+  const { ADJECTIVES, ANIMALS } = CONFIG.GENERATORS;
+  const number = Math.floor(Math.random() * 1000);
+  return `${pick(ADJECTIVES)}${pick(ANIMALS)}${number}`;
+}
+
+/**
+ * Generate a cryptographically strong password
+ * @param {number} [length=12]
+ * @returns {string}
+ */
+export function generatePassword(length = CONFIG.UI.PASSWORD_LENGTH) {
+  const chars = CONFIG.GENERATORS.PASSWORD_CHARS;
+  let password = '';
+  const randomValues = new Uint32Array(length);
+  crypto.getRandomValues(randomValues);
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(randomValues[i] % chars.length);
+  }
+  return password;
+}
+
+/**
+ * Generate a pseudo-random email
+ * @returns {string}
+ */
+export function generateEmail() {
+  const { EMAIL_PROVIDERS } = CONFIG.GENERATORS;
+  return `${generateUsername()}@${pick(EMAIL_PROVIDERS)}`;
+}
+
 export class CredentialGenerator {
   constructor(panelManager) {
     this.panelManager = panelManager;
@@ -34,61 +73,22 @@ export class CredentialGenerator {
     this.generatedResult?.addEventListener('click', () => this.handleResultClick());
   }
 
-  /**
-   * Generate a semi-random username (adjective + animal + number)
-   * @returns {string}
-   */
-  generateUsername() {
-    const { ADJECTIVES, ANIMALS } = CONFIG.GENERATORS;
-    const number = Math.floor(Math.random() * 1000);
-    return `${pick(ADJECTIVES)}${pick(ANIMALS)}${number}`;
-  }
-
-  /**
-   * Generate a cryptographically strong password
-   * @param {number} [length=12]
-   * @returns {string}
-   */
-  generatePassword(length = CONFIG.UI.PASSWORD_LENGTH) {
-    const chars = CONFIG.GENERATORS.PASSWORD_CHARS;
-    let password = '';
-    
-    // Use crypto.getRandomValues for secure random numbers
-    const randomValues = new Uint32Array(length);
-    crypto.getRandomValues(randomValues);
-    
-    for (let i = 0; i < length; i++) {
-      const idx = randomValues[i] % chars.length;
-      password += chars.charAt(idx);
-    }
-    return password;
-  }
-
-  /**
-   * Generate a pseudo-random email using generateUsername and common providers
-   * @returns {string}
-   */
-  generateEmail() {
-    const { EMAIL_PROVIDERS } = CONFIG.GENERATORS;
-    return `${this.generateUsername()}@${pick(EMAIL_PROVIDERS)}`;
-  }
-
   async handleShowGenerator() {
     await this.panelManager.toggleDisplay(document.getElementById('generateCredentialsButton'));
   }
 
   async handleGenerateUsername() {
-    const username = this.generateUsername();
+    const username = generateUsername();
     this.displayResult('Username', username);
   }
 
   async handleGeneratePassword() {
-    const password = this.generatePassword();
+    const password = generatePassword();
     this.displayResult('Password', password);
   }
 
   async handleGenerateEmail() {
-    const email = this.generateEmail();
+    const email = generateEmail();
     this.displayResult('Email', email);
   }
 

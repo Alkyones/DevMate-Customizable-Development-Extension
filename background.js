@@ -1,3 +1,5 @@
+import { generateUsername, generatePassword } from './scripts/features/credential-generator.js';
+
 let contentScriptReady = false;
 const manipulators = [
   "https://www.youtube.com"
@@ -39,10 +41,17 @@ async function rebuildCredentialMenuItems() {
   
   // Remove all and recreate
   chrome.contextMenus.removeAll(() => {
-    // Parent menu
+    // Parent menu for filling credentials
     chrome.contextMenus.create({
       id: 'devmate-autofill-parent',
       title: 'DevMate AI - Fill Credentials',
+      contexts: ['editable']
+    });
+    
+    // Generate & Save Credentials menu item
+    chrome.contextMenus.create({
+      id: 'devmate-generate-save',
+      title: 'DevMate AI - Generate & Save Credentials',
       contexts: ['editable']
     });
     
@@ -72,6 +81,14 @@ async function rebuildCredentialMenuItems() {
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const menuId = info.menuItemId.toString();
+  
+  // Handle Generate & Save Credentials
+  if (menuId === 'devmate-generate-save') {
+    await handleGenerateAndSave(tab);
+    return;
+  }
+  
+  // Handle Fill Credentials
   if (!menuId.startsWith('devmate-cred-')) return;
   
   const index = parseInt(menuId.replace('devmate-cred-', ''));
@@ -107,6 +124,121 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }).catch(() => {});
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Generate & Save Credentials
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Save credential to IndexedDB
+async function saveCredentialToDB(website, username, password) {
+  return new Promise((resolve, reject) => {
+    const dbName = 'DevToolsDB';
+    const storeName = 'credentials';
+    const request = indexedDB.open(dbName, 4);
+    
+    request.onerror = () => reject(request.error);
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      
+      const credential = {
+        website,
+        key: username,
+        value: password,
+        timestamp: Date.now()
+      };
+      
+      store.add(credential);
+      
+      tx.oncomplete = () => {
+        db.close();
+        resolve(credential);
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+    };
+  });
+}
+
+// Refresh credential cache after saving
+async function refreshCredentialCache() {
+  return new Promise((resolve, reject) => {
+    const dbName = 'DevToolsDB';
+    const storeName = 'credentials';
+    const request = indexedDB.open(dbName, 4);
+    
+    request.onerror = () => reject(request.error);
+    
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const getAllReq = store.getAll();
+      
+      getAllReq.onsuccess = () => {
+        const credentials = getAllReq.result || [];
+        chrome.storage.local.set({ credentialsCache: credentials }, () => {
+          db.close();
+          resolve(credentials);
+        });
+      };
+      getAllReq.onerror = () => {
+        db.close();
+        reject(getAllReq.error);
+      };
+    };
+  });
+}
+
+// Handle Generate & Save context menu action
+async function handleGenerateAndSave(tab) {
+  if (!tab?.id || !tab?.url) return;
+  
+  try {
+    // Extract domain from URL
+    const url = new URL(tab.url);
+    const website = url.hostname.replace(/^www\./, '');
+    
+    // Generate credentials
+    const username = generateUsername();
+    const password = generatePassword();
+    
+    // Save to IndexedDB
+    await saveCredentialToDB(website, username, password);
+    
+    // Refresh cache for context menu
+    await refreshCredentialCache();
+    
+    // Fill the form with generated credentials
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['scripts/content/autofill.js']
+      }).catch(() => {});
+      
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'autofillCredentials',
+        username,
+        password
+      });
+    } catch (err) {
+      // Fallback: direct injection
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: fillLoginForm,
+        args: [username, password]
+      }).catch(() => {});
+    }
+    
+    console.log(`Generated credentials for ${website}: ${username}`);
+  } catch (err) {
+    console.error('Failed to generate and save credentials:', err);
+  }
+}
 
 // Fallback fill function injected directly into page
 function fillLoginForm(username, password) {
