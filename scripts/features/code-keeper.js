@@ -25,11 +25,29 @@ export class CodeKeeperFeature {
     this.saveSnippetButton = document.getElementById('saveSnippetButton');
     this.codeSnippetList = document.getElementById('codeSnippetList');
     this.snippetStatus = document.getElementById('snippetStatus');
+    this.codeKeeperFormToggle = document.getElementById('codeKeeperFormToggle');
+    this.codeKeeperFormContent = document.getElementById('codeKeeperFormContent');
   }
 
   setupEventListeners() {
     this.codeKeeperButton?.addEventListener('click', () => this.handleShowCodeKeeper());
     this.saveSnippetButton?.addEventListener('click', () => this.handleSaveSnippet());
+    this.codeKeeperFormToggle?.addEventListener('click', () => this.toggleForm());
+  }
+
+  toggleForm() {
+    const isCollapsed = this.codeKeeperFormToggle.classList.toggle('collapsed');
+    this.codeKeeperFormContent.classList.toggle('collapsed', isCollapsed);
+  }
+
+  expandForm() {
+    this.codeKeeperFormToggle?.classList.remove('collapsed');
+    this.codeKeeperFormContent?.classList.remove('collapsed');
+  }
+
+  collapseForm() {
+    this.codeKeeperFormToggle?.classList.add('collapsed');
+    this.codeKeeperFormContent?.classList.add('collapsed');
   }
 
   async handleShowCodeKeeper() {
@@ -64,6 +82,10 @@ export class CodeKeeperFeature {
     
     this.codeTitleInput.value = '';
     this.codeTextarea.value = '';
+    
+    // Collapse the form after saving
+    this.collapseForm();
+    
     setTimeout(() => { this.snippetStatus.textContent = ''; }, 1200);
     await this.loadSnippets();
   }
@@ -108,7 +130,11 @@ export class CodeKeeperFeature {
         this.editingSnippetId = s.id; 
         this.codeTitleInput.value = s.title || ''; 
         this.codeTextarea.value = s.code || ''; 
-        this.snippetStatus.textContent = 'Editing...'; 
+        this.snippetStatus.textContent = 'Editing...';
+        // Expand the form when editing
+        this.expandForm();
+        // Scroll to form
+        this.codeKeeperFormToggle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } 
     });
     
@@ -137,6 +163,14 @@ export class CodeKeeperFeature {
   async loadSnippets() {
     emptyDiv(this.codeSnippetList);
     const items = await getSnippets();
+    
+    // Auto-collapse form if there are saved snippets, expand if empty
+    if (items && items.length > 0) {
+      this.collapseForm();
+    } else {
+      this.expandForm();
+    }
+    
     (items || []).forEach(s => this.codeSnippetList.appendChild(this.renderSnippetItem(s)));
   }
 }

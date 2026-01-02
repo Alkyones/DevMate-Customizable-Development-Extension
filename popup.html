@@ -90,44 +90,62 @@
     <div id="generatedResult"></div>
   </div>
   <div id="code-keeper" class="input-container" hidden>
-    <input type="text" placeholder="Snippet title" id="codeTitleInput">
-    <div class="code-keeper-textarea-wrapper">
-      <textarea id="codeTextarea" placeholder="Paste your code snippet here..."></textarea>
+    <div class="collapsible-header" id="codeKeeperFormToggle">
+      <span class="collapsible-title">
+        <svg class="collapsible-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        New Snippet
+      </span>
+      <svg class="collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <div class="code-keeper-actions">
-      <button id="saveSnippetButton"><span class="action-icon" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
-        </span>Save Snippet</button>
-      <div id="snippetStatus"></div>
+    <div class="collapsible-content" id="codeKeeperFormContent">
+      <input type="text" placeholder="Snippet title" id="codeTitleInput">
+      <div class="code-keeper-textarea-wrapper">
+        <textarea id="codeTextarea" placeholder="Paste your code snippet here..."></textarea>
+      </div>
+      <div class="code-keeper-actions">
+        <button id="saveSnippetButton"><span class="action-icon" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
+          </span>Save Snippet</button>
+        <div id="snippetStatus"></div>
+      </div>
     </div>
     <ul id="codeSnippetList"></ul>
   </div>
   <div id="pinger" class="input-container" hidden>
-    <div class="input-row">
-      <input type="text" placeholder="Request name" id="pingerNameInput">
-      <select id="pingerMethodSelect">
-        <option value="GET">GET</option>
-        <option value="POST">POST</option>
-        <option value="PUT">PUT</option>
-        <option value="DELETE">DELETE</option>
-      </select>
+    <div class="collapsible-header" id="pingerFormToggle">
+      <span class="collapsible-title">
+        <svg class="collapsible-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        New Ping Request
+      </span>
+      <svg class="collapsible-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <div class="input-row">
-      <input type="url" placeholder="Request URL" id="pingerUrlInput">
+    <div class="collapsible-content" id="pingerFormContent">
+      <div class="input-row">
+        <input type="text" placeholder="Request name" id="pingerNameInput">
+        <select id="pingerMethodSelect">
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+      </div>
+      <div class="input-row">
+        <input type="url" placeholder="Request URL" id="pingerUrlInput">
+      </div>
+      <div class="input-row">
+        <textarea id="pingerHeadersInput" placeholder='Headers (JSON format, e.g. {"Content-Type": "application/json"})'></textarea>
+      </div>
+      <div class="input-row">
+        <textarea id="pingerBodyInput" placeholder="Request body (for POST/PUT requests)"></textarea>
+      </div>
+      <div class="input-row">
+        <input type="number" placeholder="Interval (sec)" id="pingerIntervalInput" min="1" max="3600" value="60">
+        <button id="savePingerButton"><span class="action-icon" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
+          </span>Save Pinger</button>
+      </div>
+      <div id="pingerStatus"></div>
     </div>
-    <div class="input-row">
-      <textarea id="pingerHeadersInput" placeholder='Headers (JSON format, e.g. {"Content-Type": "application/json"})'></textarea>
-    </div>
-    <div class="input-row">
-      <textarea id="pingerBodyInput" placeholder="Request body (for POST/PUT requests)"></textarea>
-    </div>
-    <div class="input-row">
-      <input type="number" placeholder="Interval (sec)" id="pingerIntervalInput" min="1" max="3600" value="60">
-      <button id="savePingerButton"><span class="action-icon" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/></svg>
-        </span>Save Pinger</button>
-    </div>
-    <div id="pingerStatus"></div>
     <ul id="pingerList"></ul>
   </div>
   <div id="fetch-requests" hidden>

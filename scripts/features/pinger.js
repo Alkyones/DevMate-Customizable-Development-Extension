@@ -28,11 +28,29 @@ export class PingerFeature {
     this.savePingerButton = document.getElementById('savePingerButton');
     this.pingerStatus = document.getElementById('pingerStatus');
     this.pingerList = document.getElementById('pingerList');
+    this.pingerFormToggle = document.getElementById('pingerFormToggle');
+    this.pingerFormContent = document.getElementById('pingerFormContent');
   }
 
   setupEventListeners() {
     this.pingerButton?.addEventListener('click', () => this.handleShowPinger());
     this.savePingerButton?.addEventListener('click', () => this.handleSavePinger());
+    this.pingerFormToggle?.addEventListener('click', () => this.togglePingerForm());
+  }
+
+  togglePingerForm() {
+    const isCollapsed = this.pingerFormToggle.classList.toggle('collapsed');
+    this.pingerFormContent.classList.toggle('collapsed', isCollapsed);
+  }
+
+  expandPingerForm() {
+    this.pingerFormToggle?.classList.remove('collapsed');
+    this.pingerFormContent?.classList.remove('collapsed');
+  }
+
+  collapsePingerForm() {
+    this.pingerFormToggle?.classList.add('collapsed');
+    this.pingerFormContent?.classList.add('collapsed');
   }
 
   async handleShowPinger() {
@@ -104,6 +122,9 @@ export class PingerFeature {
     this.pingerHeadersInput.value = '';
     this.pingerBodyInput.value = '';
     this.pingerIntervalInput.value = '60';
+    
+    // Collapse the form after saving
+    this.collapsePingerForm();
     
     setTimeout(() => { this.pingerStatus.textContent = ''; }, 2000);
     await this.loadPingRequests();
@@ -220,6 +241,10 @@ export class PingerFeature {
         this.pingerBodyInput.value = pingRequest.body || '';
         this.pingerIntervalInput.value = pingRequest.interval || 60;
         this.pingerStatus.textContent = 'Editing...';
+        // Expand the form when editing
+        this.expandPingerForm();
+        // Scroll to form
+        this.pingerFormToggle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
 
@@ -260,6 +285,14 @@ export class PingerFeature {
   async loadPingRequests() {
     emptyDiv(this.pingerList);
     const requests = await getPingRequests();
+    
+    // Auto-collapse form if there are saved pingers, expand if empty
+    if (requests && requests.length > 0) {
+      this.collapsePingerForm();
+    } else {
+      this.expandPingerForm();
+    }
+    
     (requests || []).forEach(request => {
       this.pingerList.appendChild(this.renderPingItem(request));
     });

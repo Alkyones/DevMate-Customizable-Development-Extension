@@ -546,6 +546,76 @@ body.side-collapsed .devmate-title {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   Collapsible Sections
+   ───────────────────────────────────────────────────────────────────────────── */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-bottom: var(--space-md);
+  user-select: none;
+}
+
+.collapsible-header:hover {
+  background: var(--surface-hover);
+  border-color: rgba(79, 140, 247, 0.2);
+}
+
+.collapsible-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.collapsible-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-solid);
+  transition: transform var(--transition-base);
+}
+
+.collapsible-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  transition: transform var(--transition-base);
+}
+
+.collapsible-header.collapsed .collapsible-chevron {
+  transform: rotate(-90deg);
+}
+
+.collapsible-header.collapsed .collapsible-icon {
+  transform: rotate(0deg);
+}
+
+.collapsible-header:not(.collapsed) .collapsible-icon {
+  transform: rotate(45deg);
+}
+
+.collapsible-content {
+  overflow: hidden;
+  max-height: 500px;
+  opacity: 1;
+  transition: max-height var(--transition-slow), opacity var(--transition-base), margin var(--transition-base);
+}
+
+.collapsible-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    Input Containers & Form Elements
    ───────────────────────────────────────────────────────────────────────────── */
 .input-container {
