@@ -56,3 +56,14 @@ export const PANEL_KEYS = {
   CODE_KEEPER: 'codeKeeperVisible',
   PINGER: 'pingerVisible'
 };
+
+/**
+ * Check if a URL is restricted (cannot execute scripts on it)
+ * @param {string} url - The URL to check
+ * @returns {boolean} - True if the URL is restricted
+ */
+export function isRestrictedUrl(url) {
+  if (!url) return true;
+  const restrictedProtocols = ['chrome:', 'chrome-extension:', 'edge:', 'about:', 'devtools:', 'view-source:'];
+  return restrictedProtocols.some(protocol => url.startsWith(protocol));
+}

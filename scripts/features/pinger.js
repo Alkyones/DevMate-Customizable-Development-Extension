@@ -187,6 +187,8 @@ export class PingerFeature {
           chrome.runtime.sendMessage({ 
             action: 'stopPing', 
             pingId: pingRequest.id 
+          }, (resp) => {
+            if (chrome.runtime.lastError) console.warn('stopPing send failed', chrome.runtime.lastError);
           });
           await updatePingRequest(pingRequest.id, { isActive: false });
           showSnackbar('Ping stopped');
@@ -194,6 +196,8 @@ export class PingerFeature {
           chrome.runtime.sendMessage({ 
             action: 'startPing', 
             pingRequest: { ...pingRequest, isActive: true } 
+          }, (resp) => {
+            if (chrome.runtime.lastError) console.warn('startPing send failed', chrome.runtime.lastError);
           });
           await updatePingRequest(pingRequest.id, { isActive: true });
           showSnackbar('Ping started');
@@ -229,6 +233,8 @@ export class PingerFeature {
           chrome.runtime.sendMessage({ 
             action: 'stopPing', 
             pingId: pingRequest.id 
+          }, (resp) => {
+            if (chrome.runtime.lastError) console.warn('stopPing send failed', chrome.runtime.lastError);
           });
         }
         await removePingRequest(pingRequest.id);

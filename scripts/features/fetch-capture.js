@@ -88,7 +88,9 @@ export class FetchCaptureFeature {
       title: 'Replay request', 
       label: 'Replay', 
       html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M20 20v-6a7 7 0 00-7-7H7"/></svg>`, 
-      onClick: () => chrome.runtime.sendMessage({ action: 'replayRequest', request: r }) 
+      onClick: () => chrome.runtime.sendMessage({ action: 'replayRequest', request: r }, (resp) => {
+        if (chrome.runtime.lastError) console.warn('replayRequest send failed', chrome.runtime.lastError);
+      })
     });
 
     const editBtn = createActionButton({ 

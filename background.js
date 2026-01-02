@@ -165,7 +165,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       // send result back to any listeners (popup)
-      chrome.runtime.sendMessage({ action: 'replayResult', result });
+      chrome.runtime.sendMessage({ action: 'replayResult', result }).catch(() => {
+        // Popup might not be open, this is fine
+      });
       sendResponse({ ok: true });
     })();
     return true; // indicates async sendResponse
@@ -197,7 +199,9 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
       if (capture) {
         saveCapturedRequest(merged);
         // notify any open popup listeners about the new captured request
-        chrome.runtime.sendMessage({ action: 'newCapturedRequest', request: merged });
+        chrome.runtime.sendMessage({ action: 'newCapturedRequest', request: merged }).catch(() => {
+          // Popup might not be open, this is fine
+        });
       } else {
         // still notify popup live when contentScriptReady was used previously
         if (contentScriptReady) {
@@ -206,6 +210,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
             requestName: details.url,
             fetchCode: `fetch('${details.url}', { method: '${details.method}', headers: ${JSON.stringify(details.requestHeaders)} })`,
             requestDetails: merged
+          }).catch(() => {
+            // Popup might not be open, this is fine
           });
         }
       }

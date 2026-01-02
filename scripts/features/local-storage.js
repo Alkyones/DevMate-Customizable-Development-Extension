@@ -3,7 +3,7 @@
  * Handles local storage inspection functionality
  */
 
-import { PANEL_KEYS } from '../config/constants.js';
+import { PANEL_KEYS, isRestrictedUrl } from '../config/constants.js';
 
 /**
  * Send localStorage snapshot to the background (if any)
@@ -36,9 +36,29 @@ export class LocalStorageFeature {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const activeTab = tabs[0];
         if (!activeTab) return;
+        
+        // Check for restricted URLs
+        if (isRestrictedUrl(activeTab.url)) {
+          chrome.runtime.sendMessage({ 
+            action: 'localStorage', 
+            isEmpty: true, 
+            localStorageData: null,
+            error: 'Cannot access localStorage on this page (restricted URL)'
+          });
+          return;
+        }
+        
         chrome.scripting.executeScript({ 
           target: { tabId: activeTab.id }, 
           function: checkLocalStorage 
+        }).catch(err => {
+          console.warn('Failed to execute script:', err);
+          chrome.runtime.sendMessage({ 
+            action: 'localStorage', 
+            isEmpty: true, 
+            localStorageData: null,
+            error: 'Cannot access localStorage on this page'
+          });
         });
       });
     }

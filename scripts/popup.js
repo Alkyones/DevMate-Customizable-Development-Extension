@@ -6,6 +6,7 @@
 import { dbReady } from './db.js';
 import { PanelManager } from './ui/panel-manager.js';
 import { showSnackbar } from './ui/snackbar.js';
+import { isRestrictedUrl } from './config/constants.js';
 import { CredentialGenerator } from './features/credential-generator.js';
 import { LocalStorageFeature } from './features/local-storage.js';
 import { UsefulLinksFeature } from './features/useful-links.js';
@@ -63,6 +64,12 @@ function displayLocalStorageResults(message) {
   if (!resultDiv) return;
 
   resultDiv.innerHTML = '';
+
+  // Handle error messages (e.g., restricted URLs)
+  if (message.error) {
+    resultDiv.textContent = message.error;
+    return;
+  }
 
   if (message.isEmpty) {
     resultDiv.textContent = 'Local Storage is empty.';
@@ -159,12 +166,21 @@ function createLocalStorageListItem(key, value) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           const activeTab = tabs[0];
           if (!activeTab) return;
+          
+          if (isRestrictedUrl(activeTab.url)) {
+            showSnackbar('Cannot modify localStorage on this page');
+            return;
+          }
+          
           chrome.scripting.executeScript({
             target: { tabId: activeTab.id },
             func: (keyToDelete) => { localStorage.removeItem(keyToDelete); },
             args: [key]
           }, () => {
             listItem.remove();
+          }).catch(err => {
+            console.warn('Failed to delete localStorage item:', err);
+            showSnackbar('Cannot access localStorage on this page');
           });
         });
       }
@@ -215,6 +231,11 @@ function openLocalStorageEditBox(key, value, container, actionsElement) {
       const activeTab = tabs[0];
       if (!activeTab) return;
       
+      if (isRestrictedUrl(activeTab.url)) {
+        showSnackbar('Cannot modify localStorage on this page');
+        return;
+      }
+      
       chrome.scripting.executeScript({
         target: { tabId: activeTab.id },
         func: (oldKey, newKey, newValue) => {
@@ -234,7 +255,10 @@ function openLocalStorageEditBox(key, value, container, actionsElement) {
               }
             });
           }
-        });
+        }).catch(err => console.warn('Failed to refresh localStorage:', err));
+      }).catch(err => {
+        console.warn('Failed to save localStorage item:', err);
+        showSnackbar('Cannot access localStorage on this page');
       });
     });
   });
