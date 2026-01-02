@@ -78,6 +78,8 @@
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-smooth: 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   
   /* Legacy compatibility */
   --bg: var(--bg-primary);
@@ -175,7 +177,8 @@ body {
   gap: var(--space-sm);
   position: relative;
   overflow: visible;
-  transition: width var(--transition-slow), padding var(--transition-base);
+  transition: width var(--transition-smooth), min-width var(--transition-smooth), padding var(--transition-smooth);
+  transition-timing-function: var(--ease-out-expo);
 }
 
 .side-menu .button-container {
@@ -328,13 +331,23 @@ body.side-collapsed .side-menu {
 }
 
 .side-menu .button-container {
-  transition: opacity var(--transition-base), transform var(--transition-base);
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  transition: opacity 350ms var(--ease-out-expo), transform 450ms var(--ease-out-expo);
+  transition-delay: 100ms;
 }
 
 body.side-collapsed .side-menu .button-container {
   opacity: 0;
-  transform: translateX(-8px);
+  transform: translateX(-12px) scale(0.95);
   pointer-events: none;
+  transition: opacity 150ms ease-out, transform 200ms ease-out;
+  transition-delay: 0ms;
+}
+
+.popup-layout {
+  transition: gap var(--transition-smooth);
+  transition-timing-function: var(--ease-out-expo);
 }
 
 body.side-collapsed .popup-layout {
