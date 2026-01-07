@@ -1,4 +1,5 @@
 # DevMate — Chrome Extension for Developer Diagnostics
+<a href="https://www.producthunt.com/products/devmate-4/reviews/new?utm_source=badge-product_review&utm_medium=badge&utm_source=badge-devmate&#0045;4" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/product_review.svg?product_id=1141582&theme=light" alt="DevMate - DevMate&#0032;—&#0032;Simplify&#0044;&#0032;manage&#0044;&#0032;and&#0032;speed&#0032;up&#0032;your&#0032;dev&#0032;workflow&#0046; | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
 DevMate is a lightweight Chrome extension designed to speed up common developer workflows by exposing browser storage, captured network requests, and credential utilities in a compact popup UI.
 
